@@ -1,6 +1,7 @@
 
 import argparse
 import numpy as np
+import scratch
 
 from mp3frame import MP3Frame
 
@@ -24,11 +25,19 @@ def sort_files(opts):
 def make_numpy(f):
     #return np.array(f, dtype=np.dtype('b'))
     with open("testdata/test.mp3", "rb") as f:
-        return np.fromfile(f,dtype=np.dtype('B'))
+        return np.fromfile(f,dtype=np.dtype('I'))
 
 def filter_headers(f,i):
-    tmp = f[i:i+4]
-    return True
+    h = scratch.Header_struct()
+    h.d = f[i//4]
+    #h.fourb.b = f[i+1]
+    #h.fourb.c = f[i+2]
+    #h.fourb.d= f[i+3]
+    #print(h.fourb.a)
+    print(h.h.seek_tag)
+    if h.h.seek_tag == 2047:
+        return True
+    return False
 
 def identify_possible_frames(f, max=-1, frames=None, pos=None):
     """Identifies possible frames, using the seek tag and ruling out 
@@ -40,6 +49,7 @@ def identify_possible_frames(f, max=-1, frames=None, pos=None):
     print("looking for frames at {}".format(pos))
     f = make_numpy(f)
     possibles = np.where(f[:-3]>254)
+    #tmp = f.view("<i4")
     #possibles = filter(lambda x: f[x+1]>224,possibles[0])
     possibles = filter(lambda x: filter_headers(f,x),possibles[0])
     #possibles = map(lambda x: f[x:x+4], possibles[0])
@@ -132,10 +142,14 @@ if __name__ == '__main__':
     import pstats
     from io import StringIO
     
+    import scratch
+    
     pr = cProfile.Profile()
     pr.enable()
 
-    main()
+    #main()
+    
+    scratch.playtime()
     
     pr.disable()
     s = StringIO()
