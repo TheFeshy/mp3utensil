@@ -35,6 +35,11 @@ def scratch():
     print("version {}".format(head.h.version))
     print("crc_flag {}".format(head.h.crc_flag))
     
+def test_bitrate():
+    import mp3protocol
+    v = mp3protocol.MP3HeaderValues.bitrates
+    print(v[2][1][3])
+        
 def playtime():
     import numpy as np
     with open("testdata/test.mp3", "rb") as f:

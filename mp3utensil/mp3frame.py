@@ -1,6 +1,6 @@
 
 from bitstring import Bits
-from mp3protocoltables import MP3Prot
+#from mp3protocoltables import MP3HeaderValues
 from collections import namedtuple
 
 Header = namedtuple('Header','valid, version, layer, kbitrate, frequency, \
@@ -22,22 +22,22 @@ class MP3Frame():
         #seektag = '0b11111111111' == data[:11] #save the seek tag as either true or false
         if seektag: #Quick check to fail early in case this is invalid header data
             data = Bits(fourbytes)
-            version = MP3Prot.versions[data[11:13].uint]
-            layer = MP3Prot.layers[data[13:15].uint]
+            version = MP3HeaderValues.versions[data[11:13].uint]
+            layer = MP3HeaderValues.layers[data[13:15].uint]
             if "reserved" != version and "reserved" != layer: #We need these values to be valid to go on
-                kbitrate = MP3Prot.bitrates[version][layer][data[16:20].uint]
-                frequency = MP3Prot.frequency[version][data[20:22].uint]
-                emphasis = MP3Prot.emphasis[data[30:32].uint]
+                kbitrate = MP3HeaderValues.bitrates[version][layer][data[16:20].uint]
+                frequency = MP3HeaderValues.frequency[version][data[20:22].uint]
+                emphasis = MP3HeaderValues.emphases[data[30:32].uint]
                 if "reserved" != kbitrate and "reserved" != frequency and "reserved" != emphasis:
                     crc_protect = data[15]
                     padding = data[22]
                     private = data[23]
-                    channel = MP3Prot.channel[data[24:26].uint]
+                    channel = MP3HeaderValues.channels[data[24:26].uint]
                     mode_extension = data[26:28]
                     cr = data[28]
                     original = data[29]
                     if "free" != kbitrate:
-                        samplebits = MP3Prot.samples[version][layer]
+                        samplebits = MP3HeaderValues.samples[version][layer]
                         framesize = ((kbitrate * 1000 * (samplebits//8)) // frequency) + padding
                     else:
                         framesize = None

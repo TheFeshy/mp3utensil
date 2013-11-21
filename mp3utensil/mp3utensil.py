@@ -149,7 +149,8 @@ if __name__ == '__main__':
 
     #main()
     
-    scratch.playtime()
+    #scratch.playtime()
+    scratch.test_bitrate()
     
     pr.disable()
     s = StringIO()
