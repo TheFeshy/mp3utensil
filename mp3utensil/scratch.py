@@ -12,7 +12,7 @@ def test_1():
     for i in range(50000):
         for j in range(len(testheaders)):
             head.d = testheaders[j]
-            h = head.h
+            h = head._h
             valid = h.seek_tag == 2047 and h.bitrate != 15 and h.version != 1 and \
                     h.layer != 0 and h.emphasis != 2 and h.frequency != 3
 
@@ -31,7 +31,7 @@ def test_2():
 def test_speed():
     #for i in range(100000):
      #   int.from_bytes((0xFF,0xFA,0xA9,0x0F),byteorder='little')
-        #h = mp3header.MP3Header(struct.unpack('>I',struct.pack('<I', 0b11111111111110101010100100001111))[0])
+        #_h = mp3header.MP3Header(struct.unpack('>I',struct.pack('<I', 0b11111111111110101010100100001111))[0])
     h = mp3header.Header_struct()
     import sys
     h.d = int.from_bytes((0xFF,0xFA,0xA9,0x0F), sys.byteorder)
@@ -42,6 +42,14 @@ def test_speed():
         
 def playtime():
     import numpy as np
+    
+    a = np.array([1,3,5,7,2,12,1,9,9,0,0,5])
+    b = np.where(a > 3)
+    print(b)
+    c = np.searchsorted(b[0], 6)
+    print(c)
+    return None
+    
     with open("testdata/test.mp3", "rb") as f:
         f.seek(0,2)
         size = f.tell()
@@ -65,11 +73,11 @@ def playtime():
                 #break
             temp = mp3header.Header_struct()
             temp.d = i[l[1]][l[0]]
-            #if temp.h.seek_tag == 2047:
+            #if temp._h.seek_tag == 2047:
                 #pass
-                #print(temp.h.seek_tag)
-                #if temp.h.version != 1:
-                    #print(temp.h.version)
+                #print(temp._h.seek_tag)
+                #if temp._h.version != 1:
+                    #print(temp._h.version)
                     #pass 
         #a = np.array([0xFF,0xFB,0x01,0x11], dtype=np.dtype('B'))
         #b = a.view("<i2")

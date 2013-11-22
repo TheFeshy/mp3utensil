@@ -1,4 +1,15 @@
 
+import mp3header
+
+class MP3Frame():
+    """Encapsulates and provides methods to work with individual mp3 frames."""
+    __slots__ = ["header", "position", "length"]
+    
+    def __init__(self, header, position):
+        self.header = mp3header.MP3Header(header) #TODO: raise exception if header is invalid.
+        self.position = position
+        self.length = self.header.get_framesize()
+
 '''from bitstring import Bits
 #from mp3protocoltables import MP3Header
 from collections import namedtuple

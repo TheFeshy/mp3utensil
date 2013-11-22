@@ -30,12 +30,12 @@ def make_numpy(f):
 def filter_headers(f,i):
     h = scratch.Header_struct()
     h.d = f[i//4]
-    #h.fourb.b = f[i+1]
-    #h.fourb.c = f[i+2]
-    #h.fourb.d= f[i+3]
-    #print(h.fourb.a)
-    print(h.h.seek_tag)
-    if h.h.seek_tag == 2047:
+    #_h.fourb.b = f[i+1]
+    #_h.fourb.c = f[i+2]
+    #_h.fourb.d= f[i+3]
+    #print(_h.fourb.a)
+    print(_h._h.seek_tag)
+    if _h._h.seek_tag == 2047:
         return True
     return False
 
@@ -151,8 +151,8 @@ if __name__ == '__main__':
 
     #main()
     
-    #scratch.playtime()
-    scratch.test_speed()
+    scratch.playtime()
+    #scratch.test_speed()
     
     pr.disable()
     s = StringIO()

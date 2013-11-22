@@ -5,7 +5,6 @@ includes derived information such as frame length
 '''
 
 import ctypes
-import sys
 
 c_uint8 = ctypes.c_uint8
 c_uint32 = ctypes.c_uint32
@@ -35,7 +34,7 @@ class Header_struct(ctypes.Union):
 
 class MP3Header():
     """This class represents one 32 bit frame header."""
-    __slots__ = ["h", "valid"]
+    __slots__ = ["_h", "valid"]
     
     #All tables below use None type to indicate reserved (invalid) values.
     
@@ -91,9 +90,8 @@ class MP3Header():
                  (0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, None))) #Layer I
     
     def __init__(self, head):
-        self.h = Header_struct()
-        self.h.d = head
-        self.valid = MP3Header.quick_test(self.h.h)
+        self._h = head
+        self.valid = MP3Header.quick_test(self._h.h)
     
     @staticmethod
     def quick_test(head):
@@ -106,15 +104,17 @@ class MP3Header():
     def get_framesize(self):
         '''Returns the length of the frame (including the header) in bytes.'''
         if self.valid:
-            kbitrate = MP3Header.kbitrates[self.h.h.version][self.h.h.layer][self.h.h.bitrate]
-            samplebits = MP3Header.samples[self.h.h.version][self.h.h.layer]
-            frequency = MP3Header.frequencies[self.h.h.version][self.h.h.frequency]
-            padding = self.h.h.padding_flag
-            if 1 == self.h.h.layer:
+            kbitrate = MP3Header.kbitrates[self._h.h.version][self._h.h.layer][self._h.h.bitrate]
+            samplebits = MP3Header.samples[self._h.h.version][self._h.h.layer]
+            frequency = MP3Header.frequencies[self._h.h.version][self._h.h.frequency]
+            padding = self._h.h.padding_flag
+            if 1 == self._h.h.layer:
                 padding = padding * 4 #Slot size is 4 bytes for layer 1, 1 byte for layers 2 and 3.
             return ((kbitrate * 1000 * (samplebits//8)) // frequency) + padding
         return None #TODO: throw error instead?
     
     def get_frame_time(self):
         '''Returns the time in ms that this frame takes to play'''
-        return MP3Header.samples[self.h.h.version][self.h.h.layer] * 1000.0 / MP3Header.frequencies[self.h.h.version][self.h.h.frequency]
+        return MP3Header.samples[self._h.h.version][self._h.h.layer] * 1000.0 / MP3Header.frequencies[self._h.h.version][self._h.h.frequency]
+    
+    
