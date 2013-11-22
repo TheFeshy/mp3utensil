@@ -1,44 +1,44 @@
+
+import mp3header
 import ctypes
+import struct
 
-c_uint8 = ctypes.c_uint8
-c_uint32 = ctypes.c_uint32
+def test_1():
+    testheaders = [0b11111111111110101010100100001111, 0xFF0F2315, 0x12345678, 0x87654321]
+    head = mp3header.Header_struct()
+    for i in range(len(testheaders)):
+        testheaders[i] = struct.unpack('>I',struct.pack('<I', testheaders[i]))[0]
+        #print(testheaders[i])
+    for i in range(50000):
+        for j in range(len(testheaders)):
+            head.d = testheaders[j]
+            h = head.h
+            valid = h.seek_tag == 2047 and h.bitrate != 15 and h.version != 1 and \
+                    h.layer != 0 and h.emphasis != 2 and h.frequency != 3
 
-class Header_bits(ctypes.BigEndianStructure):
-    _fields_ = [("seek_tag", c_uint32, 11),
-                ("version", c_uint32, 2),
-                ("layer", c_uint32, 2),
-                ("crc_flag", c_uint32, 1),
-                ("bitrate", c_uint32, 4),
-                ("frequency", c_uint32, 2),
-                ("padding_flag", c_uint32, 1),
-                ("private_flag", c_uint32, 1),
-                ("channel", c_uint32, 2),
-                ("mode_extension", c_uint32,2),
-                ("copyright_flag", c_uint32, 1),
-                ("original_flag", c_uint32, 1),
-                ("emphasis", c_uint32,2)]
-    
-class Fourbytes(ctypes.BigEndianStructure):
-    _fileds_ = [("a", c_uint8),
-                ("b", c_uint8),
-                ("c", c_uint8),
-                ("d", c_uint8)]
-    
-class Header_struct(ctypes.Union):
-    _fields_ = [("h", Header_bits),
-                ("d", c_uint32)]
+def test_2():
+    testheaders = [0b11111111111110101010100100001111, 0xFF0F2315, 0x12345678, 0x87654321]
+    #head = mp3header.Header_struct()
+    for i in range(len(testheaders)):
+        testheaders[i] = struct.unpack('>I',struct.pack('<I', testheaders[i]))[0]
+        #print(testheaders[i])
+    for i in range(5000):
+        for j in range(len(testheaders)):
+            #head.d = testheaders[j]
+            #valid = mp3header.MP3Header.quick_test(head)
+            valid = mp3header.MP3Header(testheaders[j]).quick_test()
 
-def scratch():
-    head = Header_struct()
-    head.as_32 = 0xFFFA3D5B
-    print("seek {}".format(head.h.seek_tag))
-    print("version {}".format(head.h.version))
-    print("crc_flag {}".format(head.h.crc_flag))
-    
-def test_bitrate():
-    import mp3protocol
-    v = mp3protocol.MP3HeaderValues.bitrates
-    print(v[2][1][3])
+def test_speed():
+    #for i in range(100000):
+     #   int.from_bytes((0xFF,0xFA,0xA9,0x0F),byteorder='little')
+        #h = mp3header.MP3Header(struct.unpack('>I',struct.pack('<I', 0b11111111111110101010100100001111))[0])
+    h = mp3header.Header_struct()
+    import sys
+    h.d = int.from_bytes((0xFF,0xFA,0xA9,0x0F), sys.byteorder)
+    head = mp3header.MP3Header(h.d)
+    print(head.get_frame_time())
+    #test_1()
+    #test_2()
         
 def playtime():
     import numpy as np
@@ -63,7 +63,7 @@ def playtime():
             #print(i[l[1]][l[0]])
             #if l[0] > 2000:
                 #break
-            temp = Header_struct()
+            temp = mp3header.Header_struct()
             temp.d = i[l[1]][l[0]]
             #if temp.h.seek_tag == 2047:
                 #pass

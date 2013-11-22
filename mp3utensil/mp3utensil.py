@@ -136,6 +136,8 @@ def main():
             #f.seek(0,0)
             allbytes = f.read()
             frames = read_frames(allbytes)
+            
+            
 if __name__ == '__main__':
     
     import cProfile
@@ -150,7 +152,7 @@ if __name__ == '__main__':
     #main()
     
     #scratch.playtime()
-    scratch.test_bitrate()
+    scratch.test_speed()
     
     pr.disable()
     s = StringIO()
