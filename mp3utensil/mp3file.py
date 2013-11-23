@@ -1,7 +1,9 @@
 
+from collections import namedtuple
+
 import mp3frame
 import mp3header
-from collections import namedtuple
+import mp3utensil
 
 try:
     import numpy as np
@@ -29,25 +31,29 @@ class MP3File():
         with open(self.filename, "rb") as file:
             array = self.array_type(file)
             lockon = False #Used to determine if we (think) we know where our next frame should be
-            prev = 0 #Last identified byte; i.e. the end of the previous found frame
-            arraysize = len(array)
+            prev = -1 #Last identified byte; i.e. the end of the previous found frame
+            arraysize = array.get_size()
             consecutive = 5 #ToDo: Make this a command line variable?
             while True:
                 if not lockon:
                     nexth = self.get_lockon(array, prev, consecutive) #nexth is a position in bytes
-                    if not nexth: #EOF reached while searching; save junk
+                    if None == nexth: #EOF reached while searching; save junk
                         self.other.append(DataFrame(prev, arraysize - prev))
                         break #We've found all the frames we can
-                    elif nexth != prev: #Tag the parts we skipped as junk ("data")
+                    elif nexth > (prev + 1): #Tag the parts we skipped as junk ("data")
                         self.other.append(DataFrame(prev, nexth - prev))
                 if arraysize <= nexth:
                     break #Exit if we've just read the last frame and it ends on the file boundary
                 header = array.read_header_struct(nexth)
-                if mp3header.MP3Header.quick_test(header): #If we find a header where we expect
-                    frame = mp3frame.MP3Frame(header), nexth
+                if mp3header.MP3Header.quick_test(header.h): #If we find a header where we expect
+                    frame = mp3frame.MP3Frame(header, nexth)
                     self.frames.append(frame)
                     nexth += frame.length
+                    if nexth == prev: #Sanity check: this should only happen with "free" bitrate
+                        pass #ToDo: throw error about not supporting "free" bitrate mp3's yet.
+                    prev = nexth - 1
                 else: #We found something else; start searching again
+                    print("lockon lost")
                     lockon = False
                     
     def get_lockon(self, array, prev, consecutive_check):
@@ -62,10 +68,11 @@ class MP3File():
         ctdn = consecutive_check #ToDo: Verify this is sane (>0, < 1k?)
         found = None
         for p in potentials:
-            nexth = p
+            nexth = p[0]
+            h = p[1]
             while ctdn:
-                if mp3header.MP3Header.quick_test(nexth):
-                    header = mp3header.MP3Header(next)
+                if mp3header.MP3Header.quick_test(h.h):
+                    header = mp3header.MP3Header(h)
                     size = header.get_framesize()
                     nexth += size
                     ctdn -= 1
@@ -74,27 +81,14 @@ class MP3File():
             if ctdn: #We didn't make the required consecutive frames
                 ctdn = consecutive_check #reset the counter for the next pass
             else:
-                found = p
+                found = p[0]
                 break
         return found
-            
-            
-            
-'''Separate arrays backed by file:
-numpy, no numpy
-
-what they do different:
-Create themselves
-find potentials (generator)
-read headers (as header)
-read frames /data (eventually)
-
-What's the same:
-taking potentials (header + position) and locking on
-realizing the lock is broken
-'''            
+          
 
 class NumpyArrays():
+    """One of the possible implimentations of the array representing the mp3 file.
+       This one uses numpy to boost speed on error-riddled files."""
     def __init__(self, file):
         self.bytearray = np.fromfile(file,dtype=np.dtype('B'))
         a = self.bytearray
@@ -112,24 +106,27 @@ class NumpyArrays():
                 self.intarrays.append(a.view("<I4"))
         self.possibleheaders = np.where(a[:-3] > 254)[0]
         
-    def generate_potential_header_structs(self, start):
+    def generate_potential_header_structs(self, skip=-1):
         """Uses our list of possible headers (an index of bytes = 255),
-           cuts out the part we're already passed, then gets the index
-           and offset of the equivalent integer array."""
-        split = np.searchsorted(self.possibleheaders, start) + 1 #find next element after the start
-        self.locations = self.possibleheaders[split:]
+           to find potential headers.  Skip is the last byte we have
+           already identified (-1 if we haven't started identifying
+           yet and want the beginning of the file)
+        """
+        if skip >= 0:
+            split = np.searchsorted(self.possibleheaders, skip + 1)#find next element after the skip
+            self.locations = self.possibleheaders[split:]
+        else:
+            self.locations = self.possibleheaders
         for l in self.locations:
-            yield self.read_header_struct(l)
+            yield (l, self.read_header_struct(l))
         
     def read_header_struct(self, pos):
+        """Returns a header struct if given a position in the array."""
         int_index = divmod(pos, 4) #Get the int index and int array for fast lookup
         h = mp3header.Header_struct()
         h.d = self.intarrays[int_index[1]][int_index[0]]
         return h
-
-class generate_potentials_numpy():
-    """generator for getting potential headers
-       (that is, valid headers that may or may not have valid frames"""
-    def __init__(self, a, pos=0):
-        """Pass this a NumpyArrayViews"""
+    
+    def get_size(self):
+        return self.bytearray.size
         

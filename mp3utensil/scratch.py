@@ -39,6 +39,11 @@ def test_speed():
     print(head.get_frame_time())
     #test_1()
     #test_2()
+    
+def get_hex():
+    with open("testdata/test.mp3", "rb") as f:
+        d = f.read(4096)
+        print(d)
         
 def playtime():
     import numpy as np

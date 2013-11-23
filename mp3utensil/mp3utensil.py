@@ -151,7 +151,7 @@ if __name__ == '__main__':
 
     #main()
     
-    scratch.playtime()
+    scratch.get_hex()
     #scratch.test_speed()
     
     pr.disable()

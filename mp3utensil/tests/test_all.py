@@ -1,10 +1,12 @@
 import unittest
 
 from test_mp3header import Test_MP3Header
+from test_mp3frame import Test_MP3Frame
+from test_mp3file import Test_MP3File
 
 def build_test_suites():
     myTestSuites = {}
-    test_cases = [Test_MP3Header]
+    test_cases = [Test_MP3Header, Test_MP3Frame, Test_MP3File]
     test_types = ['short', 'medium', 'long']
     for type in test_types:
         suite = unittest.TestSuite()
