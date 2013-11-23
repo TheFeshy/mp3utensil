@@ -1,7 +1,7 @@
+# pylint: disable=C0303
 '''Test Module for mp3frame module'''
 
 import unittest
-from ctypes import c_uint32
 import sys
 
 import mp3frame
@@ -14,7 +14,7 @@ class Test_MP3Frame(unittest.TestCase):
         pass
     
     def test_short_init(self):
-        h = mp3header.Header_struct()
+        h = mp3header.HeaderStruct()
         h.d = int.from_bytes((0xFF,0xFA,0xA9,0x0F), sys.byteorder)
         frame = mp3frame.MP3Frame(h, 0)
         self.assertEqual(frame.length, 720)

@@ -1,3 +1,5 @@
+# pylint: disable=C0303, F0401
+
 import unittest
 
 import config

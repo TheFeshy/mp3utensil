@@ -1,24 +1,24 @@
-
+#pylint: disable-all
 import mp3header
 import ctypes
 import struct
 
 def test_1():
     testheaders = [0b11111111111110101010100100001111, 0xFF0F2315, 0x12345678, 0x87654321]
-    head = mp3header.Header_struct()
+    head = mp3header.HeaderStruct()
     for i in range(len(testheaders)):
         testheaders[i] = struct.unpack('>I',struct.pack('<I', testheaders[i]))[0]
         #print(testheaders[i])
     for i in range(50000):
         for j in range(len(testheaders)):
             head.d = testheaders[j]
-            h = head._h
+            h = head._h_struct
             valid = h.seek_tag == 2047 and h.bitrate != 15 and h.version != 1 and \
                     h.layer != 0 and h.emphasis != 2 and h.frequency != 3
 
 def test_2():
     testheaders = [0b11111111111110101010100100001111, 0xFF0F2315, 0x12345678, 0x87654321]
-    #head = mp3header.Header_struct()
+    #head = mp3header.HeaderStruct()
     for i in range(len(testheaders)):
         testheaders[i] = struct.unpack('>I',struct.pack('<I', testheaders[i]))[0]
         #print(testheaders[i])
@@ -31,8 +31,8 @@ def test_2():
 def test_speed():
     #for i in range(100000):
      #   int.from_bytes((0xFF,0xFA,0xA9,0x0F),byteorder='little')
-        #_h = mp3header.MP3Header(struct.unpack('>I',struct.pack('<I', 0b11111111111110101010100100001111))[0])
-    h = mp3header.Header_struct()
+        #_h_struct = mp3header.MP3Header(struct.unpack('>I',struct.pack('<I', 0b11111111111110101010100100001111))[0])
+    h = mp3header.HeaderStruct()
     import sys
     h.d = int.from_bytes((0xFF,0xFA,0xA9,0x0F), sys.byteorder)
     head = mp3header.MP3Header(h.d)
@@ -76,13 +76,13 @@ def playtime():
             #print(i[l[1]][l[0]])
             #if l[0] > 2000:
                 #break
-            temp = mp3header.Header_struct()
+            temp = mp3header.HeaderStruct()
             temp.d = i[l[1]][l[0]]
-            #if temp._h.seek_tag == 2047:
+            #if temp._h_struct.seek_tag == 2047:
                 #pass
-                #print(temp._h.seek_tag)
-                #if temp._h.version != 1:
-                    #print(temp._h.version)
+                #print(temp._h_struct.seek_tag)
+                #if temp._h_struct.version != 1:
+                    #print(temp._h_struct.version)
                     #pass 
         #a = np.array([0xFF,0xFB,0x01,0x11], dtype=np.dtype('B'))
         #b = a.view("<i2")

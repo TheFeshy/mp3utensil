@@ -1,3 +1,10 @@
+# pylint: disable=trailing-whitespace, old-style-class
+# pylint: disable=no-member
+"""This module is for interacting with a given mp3 file.
+
+   Its goals are to break up an mp3 file into its constituent parts, such as
+   groups of mp3 frames, metadata, and unknown chunks (which may be broken
+   frames or anything else."""
 
 from collections import namedtuple
 
@@ -22,101 +29,104 @@ class MP3File():
         self.frames = []
         self.other = []
         if NUMPY_AVAILABLE:
-            self.array_type = NumpyArrays
+            self._array_type = NumpyArrays
             
     def scan_file(self):
         """Identifies valid mp3 frames in a file, and separates out anything
            that isn't a valid mp3 frame as 'data'."""
-        #ToDo: Pre-scan for ID3 and similar tags?
+        #TODO: Pre-scan for ID3 and similar tags?
         with open(self.filename, "rb") as file:
-            array = self.array_type(file)
-            if config.opts.verbosity >= 3:
-                print("File {}: {} bytes".format(self.filename, array.get_size()))
-            lockon = False #Used to determine if we (think) we know where our next frame should be
-            prev = -1 #Last identified byte; i.e. the end of the previous found frame
+            array = self._array_type(file)
+            if config.OPTS.verbosity >= 3:
+                print("File {}: {} bytes".format(self.filename, 
+                                                 array.get_size()))
+            lockon = False
+            prev = -1 #Last identified byte
             arraysize = array.get_size()
-            consecutive = 5 #ToDo: Make this a command line variable?
+            consecutive = 5 #TODO: Make this a command line variable?
             while True:
                 if not lockon:
-                    if config.opts.verbosity >= 3:
-                        print("Searching for {} consecutive frames at offset{}".format(consecutive, prev))
-                    nexth = self.get_lockon(array, prev, consecutive) #nexth is a position in bytes
+                    if config.OPTS.verbosity >= 3:
+                        print("Searching for {} consecutive frames at offset{}"\
+                              .format(consecutive, prev))
+                    nexth = self.get_lockon(array, prev, consecutive)
                     if None == nexth: #EOF reached while searching; save junk
                         if prev < arraysize:
                             self.other.append(DataFrame(prev, arraysize - prev))
                         break #We've found all the frames we can
-                    elif nexth > (prev + 1): #Tag the parts we skipped as junk ("data")
+                    elif nexth > (prev + 1): #Tag the parts we skipped as junk
                         self.other.append(DataFrame(prev, nexth - prev))
-                    lockon = True #If we haven't exited by here, we should be locked on.
-                if arraysize <= nexth: #Exit if we've just read the last frame and it ends on the file boundary
+                    lockon = True #If we haven't exited, we should be locked on.
+                if arraysize <= nexth: #EOF check
                     self.other.append(DataFrame(prev, arraysize - prev))
                     break 
                 header = array.read_header_struct(nexth)
-                if mp3header.MP3Header.quick_test(header.h): #If we find a header where we expect
+                if mp3header.MP3Header.quick_test(header.h): #expected header
                     frame = mp3frame.MP3Frame(header, nexth)
                     self.frames.append(frame)
                     nexth += frame.length
-                    if nexth == prev: #Sanity check: this should only happen with "free" bitrate
-                        print("Error: we don't support 'free' bitrate files.") #ToDo: throw error about not supporting "free" bitrate mp3's yet.
+                    if nexth == prev: #Sanity check for "free" bitrate
+                        print("Error: we don't support 'free' bitrate files.")
+                        #TODO: throw error; no support for "free" bitrate mp3
                     prev = nexth - 1
                 else: #We found something else; start searching again
                     print("lockon lost")
                     lockon = False
                     
     def identify_junk(self):
-        """This tries to identify data that was previously excluded as "non-frame" data."""
+        """This tries to identify data that was previously excluded as
+           "non-frame" data."""
         for j in self.other:
             print("Offset {}, size {}".format(j.position, j.length))
-                    
+
+    #pylint: disable=no-self-use                    
     def get_lockon(self, array, prev, consecutive_check):
         """The tags that identify MP3 frames can appear by chance.  To
            avoid picking these "false" frames, we try to identify several
            frames in a row.  The chances of real frames, with flags
            indicating sizes that line up with each other, happening
            consecutively by chance is small."""
-        #ToDo: "lockon" by identifying valid crc frames too?
+        #TODO: "lockon" by identifying valid crc frames too?
         start = prev
         potentials = array.generate_potential_header_structs(start)
-        ctdn = consecutive_check #ToDo: Verify this is sane (>0, < 1k?)
-        found = None
-        for p in potentials:
-            nexth = p[0]
-            h = p[1]
+        ctdn = consecutive_check #TODO: Verify this is sane >0, < 1k?
+        for potential in potentials:
+            next_pos = potential[0]
+            header = potential[1]
             while ctdn:
-                if mp3header.MP3Header.quick_test(h.h):
-                    header = mp3header.MP3Header(h)
+                if mp3header.MP3Header.quick_test(header.h):
+                    header = mp3header.MP3Header(header)
                     size = header.get_framesize()
-                    nexth += size
+                    next_pos += size
                     ctdn -= 1
+                    header = array.read_header_struct(next_pos)
                 else:
                     break
             if ctdn: #We didn't make the required consecutive frames
                 ctdn = consecutive_check #reset the counter for the next pass
             else:
-                found = p[0]
-                break
-        return found
+                return potential[0]
           
 
 class NumpyArrays():
-    """One of the possible implimentations of the array representing the mp3 file.
-       This one uses numpy to boost speed on error-riddled files."""
+    """One of the possible implementations of the array representing the mp3 
+       file.  This one uses numpy to boost speed on error-riddled files."""
     def __init__(self, file):
         self.bytearray = np.fromfile(file,dtype=np.dtype('B'))
-        a = self.bytearray
-        size = len(a)
+        array = self.bytearray
+        size = len(array)
         self.intarrays = []
         for i in range(4): #build an array view of ints, each offset one byte
             extra = (size - i) % 4
             if i and extra:
-                self.intarrays.append(a[i:-extra].view("<I4"))
+                self.intarrays.append(array[i:-extra].view("<I4"))
             elif i:
-                self.intarrays.append(a[i:].view("<I4"))
+                self.intarrays.append(array[i:].view("<I4"))
             elif extra:
-                self.intarrays.append(a[:-extra].view("<I4"))
+                self.intarrays.append(array[:-extra].view("<I4"))
             else:
-                self.intarrays.append(a.view("<I4"))
-        self.possibleheaders = np.where(a[:-3] > 254)[0]
+                self.intarrays.append(array.view("<I4"))
+        self.possibleheaders = np.where(array[:-3] > 254)[0]
         
     def generate_potential_header_structs(self, skip=-1):
         """Uses our list of possible headers (an index of bytes = 255),
@@ -124,21 +134,22 @@ class NumpyArrays():
            already identified (-1 if we haven't started identifying
            yet and want the beginning of the file)
         """
-        if skip >= 0:
-            split = np.searchsorted(self.possibleheaders, skip + 1)#find next element after the skip
-            self.locations = self.possibleheaders[split:]
+        if skip >= 0: #Start at the next potential after the skip offset
+            split = np.searchsorted(self.possibleheaders, skip + 1)
+            locations = self.possibleheaders[split:]
         else:
-            self.locations = self.possibleheaders
-        for l in self.locations:
-            yield (l, self.read_header_struct(l))
+            locations = self.possibleheaders
+        for location in locations:
+            yield (location, self.read_header_struct(location))
         
     def read_header_struct(self, pos):
         """Returns a header struct if given a position in the array."""
-        int_index = divmod(pos, 4) #Get the int index and int array for fast lookup
-        h = mp3header.Header_struct()
-        h.d = self.intarrays[int_index[1]][int_index[0]]
-        return h
+        int_index = divmod(pos, 4)
+        header = mp3header.HeaderStruct()
+        header.d = self.intarrays[int_index[1]][int_index[0]]
+        return header
     
     def get_size(self):
+        """Returns the size of the file in bytes"""
         return self.bytearray.size
         
