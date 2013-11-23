@@ -3,7 +3,7 @@ from collections import namedtuple
 
 import mp3frame
 import mp3header
-import mp3utensil
+import config
 
 try:
     import numpy as np
@@ -30,31 +30,43 @@ class MP3File():
         #ToDo: Pre-scan for ID3 and similar tags?
         with open(self.filename, "rb") as file:
             array = self.array_type(file)
+            if config.opts.verbosity >= 3:
+                print("File {}: {} bytes".format(self.filename, array.get_size()))
             lockon = False #Used to determine if we (think) we know where our next frame should be
             prev = -1 #Last identified byte; i.e. the end of the previous found frame
             arraysize = array.get_size()
             consecutive = 5 #ToDo: Make this a command line variable?
             while True:
                 if not lockon:
+                    if config.opts.verbosity >= 3:
+                        print("Searching for {} consecutive frames at offset{}".format(consecutive, prev))
                     nexth = self.get_lockon(array, prev, consecutive) #nexth is a position in bytes
                     if None == nexth: #EOF reached while searching; save junk
-                        self.other.append(DataFrame(prev, arraysize - prev))
+                        if prev < arraysize:
+                            self.other.append(DataFrame(prev, arraysize - prev))
                         break #We've found all the frames we can
                     elif nexth > (prev + 1): #Tag the parts we skipped as junk ("data")
                         self.other.append(DataFrame(prev, nexth - prev))
-                if arraysize <= nexth:
-                    break #Exit if we've just read the last frame and it ends on the file boundary
+                    lockon = True #If we haven't exited by here, we should be locked on.
+                if arraysize <= nexth: #Exit if we've just read the last frame and it ends on the file boundary
+                    self.other.append(DataFrame(prev, arraysize - prev))
+                    break 
                 header = array.read_header_struct(nexth)
                 if mp3header.MP3Header.quick_test(header.h): #If we find a header where we expect
                     frame = mp3frame.MP3Frame(header, nexth)
                     self.frames.append(frame)
                     nexth += frame.length
                     if nexth == prev: #Sanity check: this should only happen with "free" bitrate
-                        pass #ToDo: throw error about not supporting "free" bitrate mp3's yet.
+                        print("Error: we don't support 'free' bitrate files.") #ToDo: throw error about not supporting "free" bitrate mp3's yet.
                     prev = nexth - 1
                 else: #We found something else; start searching again
                     print("lockon lost")
                     lockon = False
+                    
+    def identify_junk(self):
+        """This tries to identify data that was previously excluded as "non-frame" data."""
+        for j in self.other:
+            print("Offset {}, size {}".format(j.position, j.length))
                     
     def get_lockon(self, array, prev, consecutive_check):
         """The tags that identify MP3 frames can appear by chance.  To
