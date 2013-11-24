@@ -3,20 +3,46 @@
    mp3utensil --help
    for options."""
 
+from  functools import wraps
+
 import config
 import mp3file
 
-def conditional_profile(func):
-    """Decorator to do nothing if memory profiling is disabled"""
+def conditional_memory_profile(func):
+    """Enables memory profiling if set in the command line options."""
     if config.OPTS.profile_mem:
-        print("real profile")
         from memory_profiler import profile
         return profile(func)
     else:
-        print("identity profile")
         return func
-
-@conditional_profile
+    
+def conditional_cpu_profile(sort, max_rows):
+    """Enables CPU time profiling if set in the command line options."""
+    def profile_decorator(func):
+        """decorator function with required function signature"""
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            """allows us to wrap the call we want in other functions"""
+            import cProfile
+            import pstats
+            from io import StringIO
+            profiler = cProfile.Profile()
+            text = StringIO()
+            profiler.enable()
+            wrap_func = func(*args, **kwargs)
+            profiler.disable()
+            stats = pstats.Stats(profiler, stream=text).sort_stats(sort)
+            stats.print_stats(max_rows)
+            print(text.getvalue())
+            return wrap_func            
+        if config.OPTS.profile_cpu:
+            return wrapped
+        else:
+            return func
+    return profile_decorator
+    
+@conditional_cpu_profile(sort='tottime', max_rows=10)
+@conditional_memory_profile
 def main():
     """Program entry point"""
     if config.OPTS.verbosity >= 4:
@@ -29,45 +55,6 @@ def main():
         mfile = mp3file.MP3File(file)
         mfile.scan_file()
         mfile.identify_junk()
-
-class Profiler():
-    """Handles profiling our program for performance."""
-    def __init__(self,cpu=False, mem=False):
-        self.cpu = cpu
-        self.mem = mem
-        if cpu:
-            import cProfile
-            from io import StringIO
-            self._profiler = cProfile.Profile()
-            self._text = StringIO()
-            self._stats = None
-            self._done = False
-        
-    def start(self):
-        """Begin collecting profile data"""
-        if self.cpu:
-            self._profiler.enable()
-    
-    def finish(self):
-        """Finish collecting profile data"""
-        if self.cpu:
-            self._profiler.disable()
-        
-    def get_results(self, sort='tottime', max_rows=10):
-        """Report profile data"""
-        if self.cpu:
-            if not self._done:
-                self.finish()
-            import pstats
-            self._stats = pstats.Stats(self._profiler, 
-                                       stream=self._text).sort_stats(sort)
-            self._stats.print_stats(max_rows)
-            return self._text.getvalue()
     
 if __name__ == '__main__':
-    _PERFORMANCE = Profiler(config.OPTS.profile_cpu, config.OPTS.profile_mem)
-    _PERFORMANCE.start()
-
     main()
-    
-    print(_PERFORMANCE.get_results())
