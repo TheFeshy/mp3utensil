@@ -46,7 +46,7 @@ class MP3File():
             lockon = False
             prev = -1 #Last identified byte
             arraysize = byte_array.get_size()
-            consecutive = 5 #TODO: Make this a command line variable?
+            consecutive = config.OPTS.consecutive_frames_to_id
             while True:
                 if not lockon:
                     if config.OPTS.verbosity >= 3:
