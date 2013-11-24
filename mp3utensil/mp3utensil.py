@@ -6,6 +6,17 @@
 import config
 import mp3file
 
+def conditional_profile(func):
+    """Decorator to do nothing if memory profiling is disabled"""
+    if config.OPTS.profile_mem:
+        print("real profile")
+        from memory_profiler import profile
+        return profile(func)
+    else:
+        print("identity profile")
+        return func
+
+@conditional_profile
 def main():
     """Program entry point"""
     if config.OPTS.verbosity >= 4:
@@ -21,38 +32,42 @@ def main():
 
 class Profiler():
     """Handles profiling our program for performance."""
-    def __init__(self):
-        import cProfile
-        from io import StringIO
-        self._profiler = cProfile.Profile()
-        self._text = StringIO()
-        self._stats = None
-        self._done = False
+    def __init__(self,cpu=False, mem=False):
+        self.cpu = cpu
+        self.mem = mem
+        if cpu:
+            import cProfile
+            from io import StringIO
+            self._profiler = cProfile.Profile()
+            self._text = StringIO()
+            self._stats = None
+            self._done = False
         
     def start(self):
         """Begin collecting profile data"""
-        self._profiler.enable()
+        if self.cpu:
+            self._profiler.enable()
     
     def finish(self):
         """Finish collecting profile data"""
-        self._profiler.disable()
+        if self.cpu:
+            self._profiler.disable()
         
     def get_results(self, sort='tottime', max_rows=10):
         """Report profile data"""
-        if not self._done:
-            self.finish()
-        import pstats
-        self._stats = pstats.Stats(self._profiler, 
-                                   stream=self._text).sort_stats(sort)
-        self._stats.print_stats(max_rows)
-        return self._text.getvalue()
+        if self.cpu:
+            if not self._done:
+                self.finish()
+            import pstats
+            self._stats = pstats.Stats(self._profiler, 
+                                       stream=self._text).sort_stats(sort)
+            self._stats.print_stats(max_rows)
+            return self._text.getvalue()
     
 if __name__ == '__main__':
-    if config.OPTS.profile:
-        _PERFORMANCE = Profiler()
-        _PERFORMANCE.start()
+    _PERFORMANCE = Profiler(config.OPTS.profile_cpu, config.OPTS.profile_mem)
+    _PERFORMANCE.start()
 
     main()
     
-    if config.OPTS.profile:
-        print(_PERFORMANCE.get_results())
+    print(_PERFORMANCE.get_results())

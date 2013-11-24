@@ -19,7 +19,9 @@ def get_options():
     parser.add_argument("--no-numpy", action="store_true",
                         help="Don't use numpy for processing, even if it\
                               is available")
-    parser.add_argument("--profile", help=argparse.SUPPRESS, 
+    parser.add_argument("--profile-cpu", help=argparse.SUPPRESS, 
+                        action="store_true")
+    parser.add_argument("--profile-mem", help=argparse.SUPPRESS, 
                         action="store_true")
     parser.epilog = "Example:\nmp3utensil.py myfile.mp3"
     return parser.parse_args()
