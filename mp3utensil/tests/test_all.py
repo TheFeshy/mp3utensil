@@ -1,33 +1,36 @@
-# pylint: disable=C0303, F0401
+# pylint: disable=trailing-whitespace, import-error
+
+"""This file aggregates and runs all the test cases found in the test
+   directory.  It is used for unittest validation."""
 
 import unittest
-
-import config
-config.get_options()  #Populate the options, even for tests!
-
-#Unresolved import comments are to keep Eclipse from falsely reporting these imports unresolved. 
+ 
 from test_mp3header import Test_MP3Header  # @UnresolvedImport
 from test_mp3frame import Test_MP3Frame  # @UnresolvedImport
 from test_mp3file import Test_MP3File  # @UnresolvedImport
 
 def build_test_suites():
-    myTestSuites = {}
+    """Builds three suites of tests, one for all the short tests, medium 
+       tests, and long tests."""
+    my_test_suites = {}
     test_cases = [Test_MP3Header, Test_MP3Frame, Test_MP3File]
     test_types = ['short', 'medium', 'long']
-    for t in test_types:
+    for t_type in test_types:
         suite = unittest.TestSuite()
         for case in test_cases:
-            suite.addTest(unittest.makeSuite(case, 'test_{0}'.format(t)))
-        myTestSuites[t] = suite
-    return myTestSuites
+            suite.addTest(unittest.makeSuite(case, 'test_{0}'.format(t_type)))
+        my_test_suites[t_type] = suite
+    return my_test_suites
 
 def run_testcase(case):
+    """Runs a single test"""
     runner = unittest.TextTestRunner()
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(case, 'test'))
     runner.run(suite)
 
 def run_suite(suite, name = '', skipif=False):
+    """runs a suit of tests, or optionally skips all the tests"""
     if skipif:
         print("Failed previous tests, skipping {0}".format(name))
     else:
@@ -37,14 +40,15 @@ def run_suite(suite, name = '', skipif=False):
         if testresults.failures or testresults.errors:
             return False
         else:
-            return True        
-
-if __name__ == '__main__':
-    
+            return True 
+        
+def run_all(): 
+    """Runs all suites of tests built by build_test_suites"""      
     skipif = False
-    global myTestSuites
     suites = build_test_suites()
     print("Running all available tests")
     for name, suite in suites.items():
-        skipif = not run_suite(suite, name, skipif) 
-
+        skipif = not run_suite(suite, name, skipif)
+if __name__ == '__main__':
+    
+    run_all()

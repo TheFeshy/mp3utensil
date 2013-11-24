@@ -88,7 +88,7 @@ class MP3File():
            consecutively by chance is small."""
         #TODO: "lockon" by identifying valid crc frames too?
         start = prev
-        potentials = array.generate_potential_header_structs(start)
+        potentials = array.generate_potential_h_structs(start)
         ctdn = consecutive_check #TODO: Verify this is sane >0, < 1k?
         for potential in potentials:
             next_pos = potential[0]
@@ -128,7 +128,7 @@ class NumpyArrays():
                 self.intarrays.append(array.view("<I4"))
         self.possibleheaders = np.where(array[:-3] > 254)[0]
         
-    def generate_potential_header_structs(self, skip=-1):
+    def generate_potential_h_structs(self, skip=-1):
         """Uses our list of possible headers (an index of bytes = 255),
            to find potential headers.  Skip is the last byte we have
            already identified (-1 if we haven't started identifying
