@@ -16,6 +16,9 @@ def get_options():
     parser.add_argument("-s", "--sort", action="store_true",
                         help="sort the files alphabetically rather than\
                               using their given order")
+    parser.add_argument("--no-numpy", action="store_true",
+                        help="Don't use numpy for processing, even if it\
+                              is available")
     parser.add_argument("--profile", help=argparse.SUPPRESS, 
                         action="store_true")
     parser.epilog = "Example:\nmp3utensil.py myfile.mp3"
