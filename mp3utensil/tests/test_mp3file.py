@@ -125,6 +125,7 @@ class Test_MP3File(unittest.TestCase):
         array = mp3file.NumpyArrays(self.temp3)
         nexth = mfile3.get_lockon(array, -1, 4)
         self.assertEquals(nexth, 208, "Didn't skip 'free' bitrate frame")
+        #TODO: test that we fail for 'free' bitrate files
         
     def test_short_no_numpy(self):
         """Quick test to make sure the "no-numpy" command line switch works"""
@@ -147,11 +148,13 @@ class Test_MP3File(unittest.TestCase):
         self.assertEquals(temp,[0, 208, 417, 626, 835, 1044, 1253, 1462, 
                                 1671, 1880, 2089, 2298, 2507, 2716, 2925,
                                 3134, 3343, 3552, 3761, 3970])
+        #TODO: make test case for failing free bitrate files
         
     def test_short_python_scan_file(self):
         """Tests the file scan without numpy support"""
         config.OPTS.no_numpy = True
         self.test_short_numpy_scan_file()
+        #TODO: make test case for failing free bitrate files
     
     def tearDown(self):
         """Destroy all temp files we created"""
