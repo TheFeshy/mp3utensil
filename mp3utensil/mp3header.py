@@ -126,7 +126,7 @@ class MP3Header():
             padding = bits.padding_flag
             if 3 == bits.layer:
                 padding = padding * 4 #is 4 bytes /w layer 1, 1 byte /w 2 & 3
-            return ((kbitrate * 1000 * (samplebits//8)) // frequency) + padding
+            return ((kbitrate * 125 * samplebits) // frequency) + padding
         return None #TODO: throw error for invalid frames instead?
     
     def get_frame_time(self):
