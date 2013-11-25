@@ -33,7 +33,7 @@ class MP3File():
             self._array_type = NumpyArrays
         else:
             self._array_type = PythonArrays
-            
+        
     def scan_file(self):
         """Identifies valid mp3 frames in a file, and separates out anything
            that isn't a valid mp3 frame as 'data'."""
@@ -44,34 +44,44 @@ class MP3File():
                 print("File {}: {} bytes".format(self.filename, 
                                                  byte_array.get_size()))
             lockon = False
-            prev = -1 #Last identified byte
+            prev = 0 #Last identified byte
             arraysize = byte_array.get_size()
             consecutive = config.OPTS.consecutive_frames_to_id
+            quicktest = mp3header.MP3Header.quick_test #Save some functions
+            append_frame = self.frames.append
+            _mp3frame = mp3frame.MP3Frame
             while True:
                 if not lockon:
+                    prev_byte = prev -1
                     if config.OPTS.verbosity >= 3:
                         print("Searching for {} consecutive frames at offset{}"\
-                              .format(consecutive, prev))
-                    nexth = self.get_lockon(byte_array, prev, consecutive)
+                              .format(consecutive, prev_byte))
+                    nexth = self.get_lockon(byte_array, prev_byte, consecutive)
+                    if config.OPTS.verbosity >= 3:
+                        print("found frame at offset {}"\
+                              .format(nexth))
                     if None == nexth: #EOF reached while searching; save junk
-                        if prev < arraysize:
-                            self.other.append(DataFrame(prev, arraysize - prev))
+                        if prev_byte < arraysize:
+                            self.other.append(DataFrame(prev_byte, 
+                                                        arraysize - prev_byte))
                         break #We've found all the frames we can
-                    elif nexth > (prev + 1): #Tag the parts we skipped as junk
-                        self.other.append(DataFrame(prev, nexth - prev))
+                    elif nexth > (prev_byte + 1): #Tag the parts we skipped
+                        self.other.append(DataFrame(prev_byte, 
+                                                    nexth - prev_byte))
                     lockon = True #If we haven't exited, we should be locked on.
                 if arraysize <= nexth: #EOF check
+                    prev -= 1
                     self.other.append(DataFrame(prev, arraysize - prev))
                     break 
                 header = byte_array.read_header_struct(nexth)
-                if mp3header.MP3Header.quick_test(header.h): #expected header
-                    frame = mp3frame.MP3Frame(header, nexth)
-                    self.frames.append(frame)
+                if quicktest(header.h): #expected header
+                    frame = _mp3frame(header, nexth, True)
+                    append_frame(frame)
                     nexth += frame.length
                     if nexth == prev: #Sanity check for "free" bitrate
                         print("Error: we don't support 'free' bitrate files.")
                         #TODO: throw error; no support for "free" bitrate mp3
-                    prev = nexth - 1
+                    prev = nexth  
                 else: #We found something else; start searching again
                     print("lockon lost")
                     lockon = False
@@ -92,7 +102,7 @@ class MP3File():
         #TODO: "lockon" by identifying valid crc frames too?
         start = prev
         potentials = byte_array.generate_potential_h_structs(start)
-        ctdn = consecutive_check #TODO: Verify this is sane >0, < 1k?
+        ctdn = consecutive_check
         for potential in potentials:
             next_pos = potential[0]
             header = potential[1]
@@ -108,15 +118,14 @@ class MP3File():
             if ctdn: #We didn't make the required consecutive frames
                 ctdn = consecutive_check #reset the counter for the next pass
             else:
-                return potential[0]
-          
+                return potential[0]          
 
 class NumpyArrays():
     """One of the possible implementations of the array representing the mp3 
        file.  This one uses numpy to boost speed on error-riddled files."""
     def __init__(self, file):
-        self.bytearray = np.fromfile(file,dtype=np.dtype('B'))
-        byte_array = self.bytearray
+        self.byte_array = np.fromfile(file,dtype=np.dtype('B'))
+        byte_array = self.byte_array
         size = len(byte_array)
         self.intarrays = []
         for i in range(4): #build an byte_array view of ints, offset by 1 byte
@@ -129,7 +138,7 @@ class NumpyArrays():
                 self.intarrays.append(byte_array[:-extra].view("<I4"))
             else:
                 self.intarrays.append(byte_array.view("<I4"))
-        self.possibleheaders = np.where(byte_array[:-3] > 254)[0]
+        #self.possibleheaders = np.where(byte_array[:-3] > 254)[0]
         
     def generate_potential_h_structs(self, skip=-1):
         """Uses our list of possible headers (an index of bytes = 255),
@@ -137,13 +146,22 @@ class NumpyArrays():
            already identified (-1 if we haven't started identifying
            yet and want the beginning of the file)
         """
-        if skip >= 0: #Start at the next potential after the skip offset
-            split = np.searchsorted(self.possibleheaders, skip + 1)
-            locations = self.possibleheaders[split:]
-        else:
-            locations = self.possibleheaders
-        for location in locations:
-            yield (location, self.read_header_struct(location))
+        skip += 1 #TODO: sanity check" skip should be between -1 and size
+        size = self.get_size() - 3 #Skip the last partial byte (not a header)
+        lookahead = 65535
+        max_peek = min(size, skip+lookahead)
+        possibleheaders = np.where(self.byte_array[skip:max_peek] > 254)[0]
+        while size != skip:
+            for location in possibleheaders:
+                location = int(location)
+                location += skip
+                yield (location, self.read_header_struct(location))
+            max_peek += 65535
+            skip += 65535
+            max_peek = min(size, skip+lookahead)
+            skip = min(size, skip)
+            possibleheaders = np.where(self.byte_array[skip:max_peek] > 254)[0]
+        return None
         
     def read_header_struct(self, pos):
         """Returns a header struct if given a position in the array."""
@@ -154,7 +172,7 @@ class NumpyArrays():
     
     def get_size(self):
         """Returns the size of the file in bytes"""
-        return self.bytearray.size
+        return self.byte_array.size
     
 class PythonArrays():
     """One of the possible implementations of the array representing the mp3 
@@ -173,12 +191,43 @@ class PythonArrays():
             skip = 0
         else:
             skip = skip + 1
-        for offset, byte in enumerate(self.bytearray[skip:]):
+        #1.9 on test 1
+        cut_array = self.bytearray[skip:]
+        for offset, byte in enumerate(cut_array):
             if 255 == byte:
-                yield (offset+skip, self.read_header_struct(offset+skip))
+                offset += skip
+                yield (offset, self.read_header_struct(offset))
         return None
-        
-        
+        """2.69 on test
+        potentials = (x[0] for x in enumerate(self.bytearray[skip:]) \
+                     if x[1] == 255)
+        for location in potentials:
+            location += skip
+            yield (location, self.read_header_struct(location))
+        return None"""
+        """2.112 on test
+        size = self.get_size()
+        array = self.bytearray
+        for i in range(skip, size):
+            if 255 == array[i]:
+                yield (i, self.read_header_struct(i))
+        return None"""
+        """2.2 on test
+        size = self.get_size()
+        array = self.bytearray
+        potentials = ((x, self.read_header_struct(x)) for x in \
+                      range(skip,size) if array[x] == 255)
+        #return potentials
+        for location in potentials:
+            yield location #(location, self.read_header_struct(location))
+        return None"""
+        """7.2 on test
+        cut_array = self.bytearray[skip:]
+        potentials = filter(lambda x: x[1] == 255, enumerate(cut_array))
+        for i in potentials:
+            offset = i[0] + skip
+            yield offset, self.read_header_struct(offset) 
+        return None"""
         
     def read_header_struct(self, pos):
         """Returns a header struct if given a position in the array."""

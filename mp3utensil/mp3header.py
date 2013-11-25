@@ -31,7 +31,7 @@ class HeaderStruct(ctypes.Union):
     '''Allows us to access both the individual data items, as well as the
        entire header data at once'''
     _fields_ = [("h", HeaderBits),
-                ("d", C_UINT32)]    
+                ("d", C_UINT32)]
 
 class MP3Header():
     """This class represents one 32 bit frame header."""
@@ -92,9 +92,12 @@ class MP3Header():
                  (0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, None), #Layer II
                  (0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, None))) #Layer I
     #pylint:enable=line-too-long   
-    def __init__(self, head):
+    def __init__(self, head, validated=False):
         self._h_struct = head
-        self.valid = MP3Header.quick_test(self._h_struct.h)
+        if not validated:
+            self.valid = MP3Header.quick_test(self._h_struct.h)
+        else:
+            self.valid = True
     
     @staticmethod
     def quick_test(head_h):
@@ -102,24 +105,29 @@ class MP3Header():
            valid.  This does not guarantee the header leads a valid frame!
            Only that it can't be trivially excluded.  Returns true if valid'''
         return head_h.seek_tag == 2047 and head_h.bitrate != 15 and \
+               head_h.bitrate and \
                head_h.version != 1 and head_h.layer != 0 and \
                head_h.emphasis != 2 and head_h.frequency != 3 
+        #TODO: head_h.bitrate rules out "Free" frames as valid
     
     def get_framesize(self):
         '''Returns the length of the frame (including the header) in bytes.'''
+        bits = self._h_struct.h
+        if not bits.bitrate:
+            return None #TODO: Eventually we'll have to handle free bitrate
         if self.valid:
-            kbitrate = MP3Header.kbitrates[self._h_struct.h.version]\
-                                          [self._h_struct.h.layer]\
-                                          [self._h_struct.h.bitrate]
-            samplebits = MP3Header.samples[self._h_struct.h.version]\
-                                          [self._h_struct.h.layer]
-            frequency = MP3Header.frequencies[self._h_struct.h.version]\
-                                             [self._h_struct.h.frequency]
-            padding = self._h_struct.h.padding_flag
-            if 3 == self._h_struct.h.layer:
+            kbitrate = MP3Header.kbitrates[bits.version]\
+                                          [bits.layer]\
+                                          [bits.bitrate]
+            samplebits = MP3Header.samples[bits.version]\
+                                          [bits.layer]
+            frequency = MP3Header.frequencies[bits.version]\
+                                             [bits.frequency]
+            padding = bits.padding_flag
+            if 3 == bits.layer:
                 padding = padding * 4 #is 4 bytes /w layer 1, 1 byte /w 2 & 3
             return ((kbitrate * 1000 * (samplebits//8)) // frequency) + padding
-        return None #TODO: throw error instead?
+        return None #TODO: throw error for invalid frames instead?
     
     def get_frame_time(self):
         '''Returns the time in ms that this frame takes to play'''

@@ -41,7 +41,7 @@ def conditional_cpu_profile(sort, max_rows):
             return func
     return profile_decorator
     
-@conditional_cpu_profile(sort='tottime', max_rows=10)
+@conditional_cpu_profile(sort='tottime', max_rows=100)
 @conditional_memory_profile
 def main():
     """Program entry point"""
@@ -55,6 +55,6 @@ def main():
         mfile = mp3file.MP3File(file)
         mfile.scan_file()
         mfile.identify_junk()
-    
+         
 if __name__ == '__main__':
     main()
