@@ -25,8 +25,7 @@ class HeaderBits(ctypes.BigEndianStructure):
                 ("copyright_flag", C_UINT32, 1),
                 ("original_flag", C_UINT32, 1),
                 ("emphasis", C_UINT32,2)]
-
-    
+ 
 class HeaderStruct(ctypes.Union):
     '''Allows us to access both the individual data items, as well as the
        entire header data at once'''

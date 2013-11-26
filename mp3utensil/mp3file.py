@@ -161,7 +161,6 @@ class NumpyArrays():
             max_peek = min(size, skip+lookahead)
             skip = min(size, skip)
             possibleheaders = np.where(self.byte_array[skip:max_peek] > 254)[0]
-        return None
         
     def read_header_struct(self, pos):
         """Returns a header struct if given a position in the array."""
@@ -197,7 +196,7 @@ class PythonArrays():
             if 255 == byte:
                 offset += skip
                 yield (offset, self.read_header_struct(offset))
-        return None
+
         """2.69 on test
         potentials = (x[0] for x in enumerate(self.bytearray[skip:]) \
                      if x[1] == 255)
