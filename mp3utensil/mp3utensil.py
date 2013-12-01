@@ -34,7 +34,7 @@ def conditional_cpu_profile(sort, max_rows):
             stats = pstats.Stats(profiler, stream=text).sort_stats(sort)
             stats.print_stats(max_rows)
             print(text.getvalue())
-            return wrap_func            
+            return wrap_func           
         if config.OPTS.profile_cpu:
             return wrapped
         else:

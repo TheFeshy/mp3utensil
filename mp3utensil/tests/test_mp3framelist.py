@@ -5,10 +5,10 @@
 import unittest
 import sys
 
-import mp3frame
+import mp3framelist
 import mp3header
 
-class Test_MP3Frame(unittest.TestCase):
+class Test_MP3FrameList(unittest.TestCase):
     """Test suite for the MP3Frame module"""
     
     def setUp(self):
@@ -18,9 +18,9 @@ class Test_MP3Frame(unittest.TestCase):
         """Tests the MP3Frame's init method"""
         h_struct = mp3header.HeaderStruct()
         h_struct.d = int.from_bytes((0xFF,0xFA,0xA9,0x0F), sys.byteorder)
-        frame = mp3frame.MP3Frame(h_struct, 0)
+        frame = mp3framelist.MP3FrameList(h_struct, 0)
         self.assertEqual(frame.length, 720)
         h_struct.d = int.from_bytes((0xFF,0xFA,0x51,0x0F), sys.byteorder)
-        frame = mp3frame.MP3Frame(h_struct, 0)
+        frame = mp3framelist.MP3FrameList(h_struct, 0)
         self.assertEqual(frame.length, 208)
         

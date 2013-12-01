@@ -9,7 +9,7 @@
 from collections import namedtuple
 import array
 
-import mp3frame
+import mp3framelist
 import mp3header
 import config
 
@@ -27,7 +27,7 @@ class MP3File():
        constituent parts, including frames and (tbd) other parts (id3)'''
     def __init__(self, filename):
         self.filename = filename
-        self.frames = []
+        self.frames = None
         self.other = []
         if NUMPY_AVAILABLE and not config.OPTS.no_numpy:
             self._array_type = NumpyArrays
@@ -40,48 +40,46 @@ class MP3File():
         #TODO: Pre-scan for ID3 and similar tags?
         with open(self.filename, "rb") as file:
             byte_array = self._array_type(file)
+            array_size = byte_array.get_size()
+            self.frames = mp3framelist.MP3FrameList(file_size=array_size)
             if config.OPTS.verbosity >= 3:
                 print("File {}: {} bytes".format(self.filename, 
                                                  byte_array.get_size()))
             lockon = False
             prev = 0 #Last identified byte
-            arraysize = byte_array.get_size()
             consecutive = config.OPTS.consecutive_frames_to_id
-            quicktest = mp3header.MP3Header.quick_test #Save some functions
-            append_frame = self.frames.append
-            _mp3frame = mp3frame.MP3Frame
+            header_s = mp3header.HeaderStruct()
+            #quicktest = mp3header.MP3Header.quick_test #Save some functions
+            #append_frame = self.frames.append
+            #_mp3frame = mp3framelist.MP3FrameList #TODO: frame to framelist
             while True:
                 if not lockon:
                     prev_byte = prev -1
                     if config.OPTS.verbosity >= 3:
                         print("Searching for {} consecutive frames at offset{}"\
                               .format(consecutive, prev_byte))
-                    nexth = self.get_lockon(byte_array, prev_byte, consecutive)
+                    next_pos = self.get_lockon(byte_array, prev_byte, consecutive)
                     if config.OPTS.verbosity >= 3:
                         print("found frame at offset {}"\
-                              .format(nexth))
-                    if None == nexth: #EOF reached while searching; save junk
-                        if prev_byte < arraysize:
+                              .format(next_pos))
+                    if None == next_pos: #EOF reached while searching; save junk
+                        if prev_byte < array_size:
                             self.other.append(DataFrame(prev_byte, 
-                                                        arraysize - prev_byte))
+                                                        array_size - prev_byte))
                         break #We've found all the frames we can
-                    elif nexth > (prev_byte + 1): #Tag the parts we skipped
+                    elif next_pos > (prev_byte + 1): #Tag the parts we skipped
                         self.other.append(DataFrame(prev_byte, 
-                                                    nexth - prev_byte))
+                                                    next_pos - prev_byte))
                     lockon = True #If we haven't exited, we should be locked on.
-                if arraysize <= nexth: #EOF check
+                if array_size <= next_pos: #EOF check
                     prev -= 1
-                    self.other.append(DataFrame(prev, arraysize - prev))
+                    self.other.append(DataFrame(prev, array_size - prev))
                     break 
-                header = byte_array.read_header_struct(nexth)
-                if quicktest(header.h): #expected header
-                    frame = _mp3frame(header, nexth, True)
-                    append_frame(frame)
-                    nexth += frame.length
-                    if nexth == prev: #Sanity check for "free" bitrate
-                        print("Error: we don't support 'free' bitrate files.")
-                        #TODO: throw error; no support for "free" bitrate mp3
-                    prev = nexth  
+                header_s = byte_array.read_header_struct(next_pos)
+                length = self.frames.conditional_append_frame(header_s, next_pos)
+                if length: #If the header was valid, it's info was added
+                    prev = next_pos
+                    next_pos += length #TODO: free bitrate frames?
                 else: #We found something else; start searching again
                     print("lockon lost")
                     lockon = False

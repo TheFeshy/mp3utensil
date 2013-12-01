@@ -141,7 +141,7 @@ class Test_MP3File(unittest.TestCase):
         mfile.scan_file()
         temp = []
         for i in mfile.frames:
-            temp.append(i.position)
+            temp.append(i[1])
         self.assertEquals(len(mfile.other),1, 
                           "Accidentally tagged valid frames as data") 
         #the end of the array isn't on a frame boundary so it should find one.
