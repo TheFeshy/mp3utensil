@@ -87,6 +87,7 @@ class HeaderStruct(ctypes.Union):
                  (0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, None))) #Layer I
     #pylint:enable=line-too-long 
 
+'''
 class MP3Header():
     """This class represents one 32 bit frame header."""
     __slots__ = ["_h_struct", "valid"]
@@ -155,9 +156,9 @@ class MP3Header():
     
     @staticmethod
     def quick_test(head_h):
-        '''Does a quick check of a header to see if the flags it contains are 
+        """Does a quick check of a header to see if the flags it contains are 
            valid.  This does not guarantee the header leads a valid frame!
-           Only that it can't be trivially excluded.  Returns true if valid'''
+           Only that it can't be trivially excluded.  Returns true if valid"""
         return head_h.seek_tag == 2047 and head_h.bitrate != 15 and \
                head_h.bitrate and \
                head_h.version != 1 and head_h.layer != 0 and \
@@ -165,7 +166,7 @@ class MP3Header():
         #TODO: head_h.bitrate rules out "Free" frames as valid
     
     def get_framesize(self):
-        '''Returns the length of the frame (including the header) in bytes.'''
+        """Returns the length of the frame (including the header) in bytes."""
         bits = self._h_struct.h
         if not bits.bitrate:
             return None #TODO: Eventually we'll have to handle free bitrate
@@ -184,7 +185,7 @@ class MP3Header():
         return None #TODO: throw error for invalid frames instead?
     
     def get_frame_time(self):
-        '''Returns the time in ms that this frame takes to play'''
+        """Returns the time in ms that this frame takes to play"""
         return MP3Header.samples[self._h_struct.h.version]\
                [self._h_struct.h.layer] * 1000.0 / \
                MP3Header.frequencies[self._h_struct.h.version]\
@@ -201,4 +202,5 @@ class MP3Header():
                                MP3Header.kbitrates[version][layer][bitrate],
                                MP3Header.frequencies[version][frequency],
                                self.valid)  
+'''
     

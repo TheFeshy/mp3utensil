@@ -89,8 +89,7 @@ class MP3File():
            "non-frame" data."""
         for j in self.other:
             print("Offset {}, size {}".format(j.position, j.length))
-
-    #pylint: disable=no-self-use                    
+                    
     def get_lockon(self, byte_array, prev, consecutive_check):
         """The tags that identify MP3 frames can appear by chance.  To
            avoid picking these "false" frames, we try to identify several
@@ -98,25 +97,25 @@ class MP3File():
            indicating sizes that line up with each other, happening
            consecutively by chance is small."""
         #TODO: "lockon" by identifying valid crc frames too?
-        start = prev
-        potentials = byte_array.generate_potential_h_structs(start)
+        potentials = byte_array.generate_potential_h_structs(prev)
         ctdn = consecutive_check
         for potential in potentials:
             next_pos = potential[0]
             header = potential[1]
             while ctdn:
-                if mp3header.MP3Header.quick_test(header.h):
-                    header = mp3header.MP3Header(header)
-                    size = header.get_framesize()
-                    next_pos += size
+                length = self.frames.conditional_append_frame(header, next_pos, quarantine=True)
+                if length:
                     ctdn -= 1
+                    next_pos += length
                     header = byte_array.read_header_struct(next_pos)
                 else:
                     break
             if ctdn: #We didn't make the required consecutive frames
                 ctdn = consecutive_check #reset the counter for the next pass
+                self.frames.discard_quarantine()
             else:
-                return potential[0]          
+                self.frames.accept_quarantine()
+                return next_pos          
 
 class NumpyArrays():
     """One of the possible implementations of the array representing the mp3 

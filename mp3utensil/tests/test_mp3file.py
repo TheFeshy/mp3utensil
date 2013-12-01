@@ -6,8 +6,8 @@ import unittest
 import tempfile
 
 import mp3file
-import mp3header
 import config
+import mp3framelist
 
 #pylint: disable=too-many-public-methods
 #above is a side-effect of using decorators.
@@ -40,6 +40,7 @@ class Test_MP3File(unittest.TestCase):
         self.savedopts = config.OPTS
         #pylint: enable=line-too-long
     
+    '''
     @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")
     def test_short_numpy_read_header(self):
         """Testing of the numpy array's read header method"""
@@ -50,7 +51,7 @@ class Test_MP3File(unittest.TestCase):
         """Testing of the python array's read header method"""
         byte_array = mp3file.PythonArrays(self.temp)
         self.read_header(byte_array)
-        
+    
     def read_header(self, byte_array):
         """Tests the read header method from one of the byte_array types"""
         h1 = byte_array.read_header_struct(0)
@@ -58,7 +59,7 @@ class Test_MP3File(unittest.TestCase):
         self.assertTrue(mp3header.MP3Header.quick_test(h1.h), 
                         "First header in sample file not read")
         self.assertTrue(mp3header.MP3Header.quick_test(h2.h), 
-                        "Second header in sample file not read")
+                        "Second header in sample file not read")'''
     
     @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")    
     def test_short_numpy_generate_potential(self):
@@ -98,33 +99,35 @@ class Test_MP3File(unittest.TestCase):
         """Testing that the numpy array's lockon method works"""
         mfile = mp3file.MP3File(self.temp)
         array = mp3file.NumpyArrays(self.temp)
+        mfile.frames = mp3framelist.MP3FrameList(array.get_size())
         self.array_lockon(array, mfile)
         
     def test_short_python_array_lockon(self):
         """Testing that the numpy array's lockon method works"""
         mfile = mp3file.MP3File(self.temp)
         array = mp3file.PythonArrays(self.temp)
+        mfile.frames = mp3framelist.MP3FrameList(array.get_size())
         self.array_lockon(array, mfile)
         
     def array_lockon(self, array, mfile):
         """Tests the lockon method for a given array and file"""
         nexth = mfile.get_lockon(array, -1, 4)
-        self.assertEquals(nexth, 0, "First frame not found")
+        self.assertEquals(mfile.frames._quarantine[0][1], 0, "First frame not found")
         nexth = mfile.get_lockon(array, 73, 4)
-        self.assertEquals(nexth, 208, 
+        self.assertEquals(mfile.frames._quarantine[0][1], 208, 
                 "Frame not found after junk data with false headers in between")
         nexth = mfile.get_lockon(array, 150, 4)
-        self.assertEquals(nexth, 208, 
+        self.assertEquals(mfile.frames._quarantine[0][1], 208, 
                 "Frame not found after junk data without false header between")
         mfile2 = mp3file.MP3File(self.temp2)
         array = mp3file.NumpyArrays(self.temp2)
         nexth = mfile2.get_lockon(array, -1, 4)
-        self.assertEquals(nexth, 417, 
+        self.assertEquals(mfile.frames._quarantine[0][1], 417, 
                           "Frame lock-on despite intervening junk")
         mfile3 = mp3file.MP3File(self.temp3)
         array = mp3file.NumpyArrays(self.temp3)
         nexth = mfile3.get_lockon(array, -1, 4)
-        self.assertEquals(nexth, 208, "Didn't skip 'free' bitrate frame")
+        self.assertEquals(mfile.frames._quarantine[0][1], 208, "Didn't skip 'free' bitrate frame")
         #TODO: test that we fail for 'free' bitrate files
         
     def test_short_no_numpy(self):
@@ -142,6 +145,7 @@ class Test_MP3File(unittest.TestCase):
         temp = []
         for i in mfile.frames:
             temp.append(i[1])
+        print(mfile.other)
         self.assertEquals(len(mfile.other),1, 
                           "Accidentally tagged valid frames as data") 
         #the end of the array isn't on a frame boundary so it should find one.

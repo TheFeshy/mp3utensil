@@ -13,7 +13,7 @@ def build_test_suites():
     """Builds three suites of tests, one for all the short tests, medium 
        tests, and long tests."""
     my_test_suites = {}
-    test_cases = [Test_MP3Header, Test_MP3File]
+    test_cases = [Test_MP3File] #header, framelist
     test_types = ['short', 'medium', 'long']
     for t_type in test_types:
         suite = unittest.TestSuite()
