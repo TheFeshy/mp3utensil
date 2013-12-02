@@ -1,5 +1,5 @@
 # pylint: disable=trailing-whitespace, import-error, invalid-name
-# pylint: disable=no-member
+# pylint: disable=no-member, too-many-public-methods
 '''Test Module for pythonrecordarray module'''
 
 import unittest
@@ -30,3 +30,4 @@ class Test_PythonRecordArray(unittest.TestCase):
 if __name__ == '__main__':
     import test_all #@UnresolvedImport
     test_all.run_tests([Test_PythonRecordArray])
+    

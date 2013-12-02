@@ -12,6 +12,12 @@ class MP3FrameList():
                   ('position',np.uint64),
                   ('length',np.uint16)]
     
+    if config.OPTS.use_numpy:
+        import pythonrecordarray
+        _INIT = pythonrecordarray.PythonRecordArray
+    else:
+        _INIT = np.zeros
+    
     def __init__(self, file_size=0):
         #max framesize=2880, min framesize=24, ebook=208, music=576
         approximate_frame_size = 300
@@ -21,9 +27,9 @@ class MP3FrameList():
         self._chunksize = max(self._chunksize, 10000) #avoid pathological cases
         self._next_frame = 0
         self._current_chunk = 0
-        self._chunks = [np.zeros(self._chunksize, 
+        self._chunks = [MP3FrameList._INIT(self._chunksize, 
                         dtype=MP3FrameList._FRAMETYPE)]
-        self._quarantine = np.zeros(quarantine_size, 
+        self._quarantine = MP3FrameList._INIT(quarantine_size, 
                                     dtype=MP3FrameList._FRAMETYPE)
         self._next_quarantine_frame = 0
         
@@ -34,7 +40,7 @@ class MP3FrameList():
             self._next_quarantine_frame += 1
         else:
             if self._next_frame >= self._chunksize: #chunk's full, add another
-                self._chunks.append(np.zeros(self._chunksize, 
+                self._chunks.append(MP3FrameList._INIT(self._chunksize, 
                                     dtype=MP3FrameList._FRAMETYPE))
                 self._next_frame = 0
                 self._current_chunk += 1

@@ -6,7 +6,7 @@ import sys
 
 import argparse
 
-def get_options():
+def discover_options():
     """Gets all options from command line and (tbd) config file"""
     parser = argparse.ArgumentParser(prog="mp3utensil", add_help=False)
     parser.description = \
@@ -46,5 +46,20 @@ def get_options():
         sys.exit(0)        
     return opts
 
+def discover_available_libraries():
+    """Discovers what libraries are available for optimization and what the
+       user has requested we not use.  Call this after OPTS exists."""
+    setattr(OPTS, 'use_numpy', False)
+    #pylint: disable=unused-variable
+    if not OPTS.no_numpy:
+        try:
+            import numpy #@UnusedImport
+            
+            setattr(OPTS, 'use_numpy',True)
+        except ImportError:
+            pass
+    #pylint: enable=unused-variable
+
 #Global options data
-OPTS = get_options()
+OPTS = discover_options()
+discover_available_libraries()

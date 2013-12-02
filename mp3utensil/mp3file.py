@@ -13,12 +13,9 @@ import mp3framelist
 import mp3header
 import config
 
-try:
+if config.OPTS.use_numpy:
     import numpy as np
-    NUMPY_AVAILABLE = True
-except ImportError:
-    print("Numpy not installed.  This program is much faster with numpy.")
-    NUMPY_AVAILABLE = False
+
 
 DataFrame = namedtuple("DataFrame", ["position", "length"])
 
@@ -29,7 +26,7 @@ class MP3File():
         self.filename = filename
         self.frames = None
         self.other = []
-        if NUMPY_AVAILABLE and not config.OPTS.no_numpy:
+        if config.OPTS.use_numpy:
             self._array_type = NumpyArrays
         else:
             self._array_type = PythonArrays

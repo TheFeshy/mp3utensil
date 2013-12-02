@@ -31,17 +31,17 @@ class Test_MP3File(unittest.TestCase):
         self.savedopts = config.OPTS
         random.seed(1) #unit tests should be predictable; so let's use the same seed ech time.
     
-    @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")   
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")   
     def test_short_01_numpy_single_frame(self):
         """Tests ability to identify a file consisting of a single frame.
            Very basic test of frame identification."""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.single_frame()
         
     def test_short_02_python_single_frame(self):
         """Tests ability to identify a file consisting of a single frame.
            Very basic test of frame identification."""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.single_frame()
     
     def single_frame(self):
@@ -55,15 +55,15 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(0, len(mfile.other), "Found data where there was none")
         self.assertEqual(0, mfile.frames[0][1], "Found frame at wrong position")
         
-    @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")    
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")    
     def test_medium_03_numpy_many_frames(self):
         """Tests a basic mp3 file with many frames but no "junk" data."""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.many_frames()
         
     def test_medium_04_python_many_frames(self):
         """Tests a basic mp3 file with many frames but no "junk" data."""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.many_frames()
     
     def many_frames(self):
@@ -77,15 +77,15 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(0, len(mfile.other), "Found data where there was none")
         self.assertEqual(0, mfile.frames[0][1], "Found frame at wrong position")
         
-    @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")    
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")    
     def test_short_05_numpy_two_frames_junk_before(self):
         """A short test case to identify junk before frames"""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.two_frames_junk_before()
         
     def test_short_06_python_two_frames_junk_before(self):
         """A short test case to identify junk before frames"""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.two_frames_junk_before()
     
     def two_frames_junk_before(self):
@@ -103,15 +103,15 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(0, mfile.other[0][0], "Junk found at wrong location")
         self.assertEqual(junk_amount, mfile.other[0][1], "Junk found had wrong length")
             
-    @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")    
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")    
     def test_short_07_numpy_two_frames_junk_after(self):
         """A simple test to identify junk at the end of a file"""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.only_junk()
         
     def test_short_08_python_two_frames_junk_after(self):
         """A simple test to identify junk at the end of a file"""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.only_junk()
         
     def two_frames_junk_after(self):
@@ -130,15 +130,15 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(junk_start, mfile.other[0][0], "Junk found at wrong location")
         self.assertEqual(junk_amount, mfile.other[0][1], "Junk found had wrong length")
         
-    @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")    
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")    
     def test_medium_09_numpy_only_junk(self):
         """Tests the pathological case of a file with no MP3 data."""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.only_junk()
         
     def test_medium_10_python_only_junk(self):
         """Tests the pathological case of a file with no MP3 data."""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.only_junk()
         
     def only_junk(self):
@@ -154,15 +154,15 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(0, mfile.other[0][0], "Junk found at wrong location")
         self.assertEqual(junk_amount, mfile.other[0][1], "Junk found had wrong length")
         
-    @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")    
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")    
     def test_short_11_numpy_junk_middle(self):
         """Test to identify junk data within the mp3 stream"""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.junk_middle()
         
     def test_short_12_python_junk_middle(self):
         """Test to identify junk data within the mp3 stream"""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.junk_middle()
         
     def junk_middle(self):
@@ -183,15 +183,15 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(junk_start, mfile.other[0][0], "Junk found at wrong location")
         self.assertEqual(junk_amount, mfile.other[0][1], "Junk found had wrong length")
         
-    @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")    
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")    
     def test_medium_13_numpy_mixed_frames(self):
         """Test to identify mixed, but otherwise valid, MP3 frames"""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.mixed_frames()
         
     def test_medium_14_python_mixed_frames(self):
         """Test to identify mixed, but otherwise valid, MP3 frames"""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.mixed_frames()
     
     def mixed_frames(self):
@@ -204,15 +204,16 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(100, len(mfile.frames), "Found more or less than one frame")
         self.assertEqual(0, len(mfile.other), "Found data where there was none")
         self.assertEqual(0, mfile.frames[0][1], "Found frame at wrong position")
-        
+    
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")    
     def test_medium_15_numpy_junk_all_three(self):
         """Test to identify junk in three locations within a file."""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.junk_all_three()
         
     def test_medium_16_python_junk_all_three(self):
         """Test to identify junk in three locations within a file."""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.junk_all_three()
         
     def junk_all_three(self):
@@ -242,17 +243,17 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(junk_amount2, mfile.other[1][1], "Junk found had wrong length")
         self.assertEqual(junk_amount3, mfile.other[2][1], "Junk found had wrong length")
         
-    @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")
     @unittest.expectedFailure    
     def test_short_17_numpy_short_frame_end(self):
         """Test to identify a "valid" frame that extends past the file as a short frame."""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.short_frame_end()
     
     @unittest.expectedFailure    
     def test_short_18_python_short_frame_end(self):
         """Test to identify a "valid" frame that extends past the file as a short frame."""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.short_frame_end()
         
     def short_frame_end(self):
@@ -272,14 +273,14 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(junk_start, mfile.other[0][0], "Junk found at wrong location")
         self.assertEqual(13, mfile.other[0][1], "Junk found had wrong length")
         
-    @unittest.skipIf(not mp3file.NUMPY_AVAILABLE, "Numpy not available to test")
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")
     @unittest.expectedFailure    
     def test_short_17_numpy_short_frame_middle(self):
         """This test attempts to identify a short frame in the middle of the file.
            This could happen if a file is split, has ID3v1 tag badly written to it,
            then is rejoined.  The short frame should be junk, while the long frame
            following it should be valid."""
-        config.OPTS.no_numpy = False
+        config.OPTS.use_numpy = True
         self.short_frame_middle()
     
     @unittest.expectedFailure    
@@ -288,7 +289,7 @@ class Test_MP3File(unittest.TestCase):
            This could happen if a file is split, has ID3v1 tag badly written to it,
            then is rejoined.  The short frame should be junk, while the long frame
            following it should be valid."""
-        config.OPTS.no_numpy = True
+        config.OPTS.use_numpy = False
         self.short_frame_middle()
         
     def short_frame_middle(self):
