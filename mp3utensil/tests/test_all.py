@@ -9,17 +9,20 @@ from test_mp3header import Test_MP3Header  # @UnresolvedImport
 from test_mp3framelist import Test_MP3FrameList  # @UnresolvedImport
 from test_mp3file import Test_MP3File  # @UnresolvedImport
 
-def build_test_suites():
+def build_test_suites(cases=None):
     """Builds three suites of tests, one for all the short tests, medium 
        tests, and long tests."""
-    my_test_suites = {}
-    test_cases = [Test_MP3File] #header, framelist
+    my_test_suites = []
+    if None == cases:
+        test_cases = [Test_MP3File] #header, framelist
+    else:
+        test_cases = cases
     test_types = ['short', 'medium', 'long']
     for t_type in test_types:
         suite = unittest.TestSuite()
         for case in test_cases:
             suite.addTest(unittest.makeSuite(case, 'test_{0}'.format(t_type)))
-        my_test_suites[t_type] = suite
+        my_test_suites.append((t_type,suite))
     return my_test_suites
 
 def run_testcase(case):
@@ -42,13 +45,14 @@ def run_suite(suite, name = '', skipif=False):
         else:
             return True 
         
-def run_all(): 
+def run_tests(suites_to_use=None): 
     """Runs all suites of tests built by build_test_suites"""      
     skipif = False
-    suites = build_test_suites()
+    suites = build_test_suites(suites_to_use)
     print("Running all available tests")
-    for name, suite in suites.items():
+    for name, suite in suites:
+        print("Running suite {}".format(name))
         skipif = not run_suite(suite, name, skipif)
+        
 if __name__ == '__main__':
-    
-    run_all()
+    run_tests()

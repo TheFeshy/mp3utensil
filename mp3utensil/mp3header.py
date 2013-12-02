@@ -86,6 +86,16 @@ class HeaderStruct(ctypes.Union):
                  (0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, None), #Layer II
                  (0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, None))) #Layer I
     #pylint:enable=line-too-long 
+    def __str__(self):
+        version = self.h.version
+        layer = self.h.layer
+        bitrate = self.h.bitrate
+        frequency = self.h.frequency
+        return "{} {}, {} kbs @ {} hz".format(\
+                               HeaderStruct.versions[version], 
+                               HeaderStruct.layers[layer],
+                               HeaderStruct.kbitrates[version][layer][bitrate],
+                               HeaderStruct.frequencies[version][frequency])
 
 '''
 class MP3Header():

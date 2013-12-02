@@ -49,39 +49,39 @@ class MP3File():
             prev = 0 #Last identified byte
             consecutive = config.OPTS.consecutive_frames_to_id
             header_s = mp3header.HeaderStruct()
-            #quicktest = mp3header.MP3Header.quick_test #Save some functions
-            #append_frame = self.frames.append
+            verbosity = config.OPTS.verbosity
+            append_frame = self.frames.conditional_append_frame
             #_mp3frame = mp3framelist.MP3FrameList #TODO: frame to framelist
             while True:
                 if not lockon:
-                    prev_byte = prev -1
-                    if config.OPTS.verbosity >= 3:
-                        print("Searching for {} consecutive frames at offset{}"\
+                    prev_byte = prev 
+                    if verbosity >= 3:
+                        print("Searching for {} consecutive frames at offset {}"\
                               .format(consecutive, prev_byte))
-                    next_pos = self.get_lockon(byte_array, prev_byte, consecutive)
-                    if config.OPTS.verbosity >= 3:
-                        print("found frame at offset {}"\
-                              .format(next_pos))
+                    next_pos, first_pos = self.get_lockon(byte_array, prev_byte-1, consecutive)
+                    if verbosity >= 3:
+                        print("found {} frames at offset {}"\
+                              .format(consecutive, first_pos))
                     if None == next_pos: #EOF reached while searching; save junk
                         if prev_byte < array_size:
                             self.other.append(DataFrame(prev_byte, 
                                                         array_size - prev_byte))
                         break #We've found all the frames we can
-                    elif next_pos > (prev_byte + 1): #Tag the parts we skipped
+                    elif first_pos > prev_byte: #Tag the parts we skipped
                         self.other.append(DataFrame(prev_byte, 
-                                                    next_pos - prev_byte))
+                                                    first_pos - prev_byte))
                     lockon = True #If we haven't exited, we should be locked on.
+                    prev = next_pos #If we locked on, we identified to here.
                 if array_size <= next_pos: #EOF check
-                    prev -= 1
-                    self.other.append(DataFrame(prev, array_size - prev))
                     break 
                 header_s = byte_array.read_header_struct(next_pos)
-                length = self.frames.conditional_append_frame(header_s, next_pos)
+                length = append_frame(header_s, next_pos)
                 if length: #If the header was valid, it's info was added
-                    prev = next_pos
                     next_pos += length #TODO: free bitrate frames?
+                    prev = next_pos
                 else: #We found something else; start searching again
-                    print("lockon lost")
+                    if verbosity >=3:
+                        print("lockon lost")
                     lockon = False
                     
     def identify_junk(self):
@@ -101,13 +101,14 @@ class MP3File():
         ctdn = consecutive_check
         for potential in potentials:
             next_pos = potential[0]
-            header = potential[1]
+            #header = potential[1]
             while ctdn:
+                header = byte_array.read_header_struct(next_pos)
                 length = self.frames.conditional_append_frame(header, next_pos, quarantine=True)
                 if length:
                     ctdn -= 1
                     next_pos += length
-                    header = byte_array.read_header_struct(next_pos)
+                    #header = byte_array.read_header_struct(next_pos)
                 else:
                     break
             if ctdn: #We didn't make the required consecutive frames
@@ -115,7 +116,8 @@ class MP3File():
                 self.frames.discard_quarantine()
             else:
                 self.frames.accept_quarantine()
-                return next_pos          
+                return next_pos, potential[0] 
+        return None, None         
 
 class NumpyArrays():
     """One of the possible implementations of the array representing the mp3 
