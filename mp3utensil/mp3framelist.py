@@ -3,20 +3,22 @@
 # no-member because pylit isn't handling numpy imports properly.
 """ Used for storing and interpreting individual frames in an mp3 file. """
 import mp3header
-import numpy as np
 import config
 
 class MP3FrameList():
-    """Encapsulates and provides methods to work with individual mp3 frames."""
-    _FRAMETYPE = [('header',np.uint32),
-                  ('position',np.uint64),
-                  ('length',np.uint16)]
-    
+    """Encapsulates and provides methods to work with individual mp3 frames."""    
     if config.OPTS.use_numpy:
+        import numpy as np
+        _INIT = np.zeros
+        _FRAMETYPE = [('header',np.uint32),
+                      ('position',np.uint64),
+                      ('length',np.uint16)]
+    else:
         import pythonrecordarray
         _INIT = pythonrecordarray.PythonRecordArray
-    else:
-        _INIT = np.zeros
+        _FRAMETYPE = [('header','L'),
+                      ('position','L'),
+                      ('length','H')]
     
     def __init__(self, file_size=0):
         #max framesize=2880, min framesize=24, ebook=208, music=576

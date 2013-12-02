@@ -11,9 +11,9 @@ class Test_PythonRecordArray(unittest.TestCase):
     
     def test_short_01_init_and_access(self):
         """Currently tests everything in this class."""
-        typedef = [("recordone",np.uint16),
-                   ("recordtwo",np.uint32),
-                   ("recordthree",np.uint64)]
+        typedef = [("recordone",'H'),
+                   ("recordtwo",'L'),
+                   ("recordthree",'L')]
         parray = pythonrecordarray.PythonRecordArray(10,typedef,0)
         self.assertEqual([0,0,0],parray[0])
         self.assertEqual(0, parray.recordone[0])
