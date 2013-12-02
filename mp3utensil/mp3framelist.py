@@ -21,8 +21,10 @@ class MP3FrameList():
         self._chunksize = max(self._chunksize, 10000) #avoid pathological cases
         self._next_frame = 0
         self._current_chunk = 0
-        self._chunks = [np.zeros(self._chunksize, dtype=MP3FrameList._FRAMETYPE),]
-        self._quarantine = np.zeros(quarantine_size, dtype=MP3FrameList._FRAMETYPE)
+        self._chunks = [np.zeros(self._chunksize, 
+                        dtype=MP3FrameList._FRAMETYPE)]
+        self._quarantine = np.zeros(quarantine_size, 
+                                    dtype=MP3FrameList._FRAMETYPE)
         self._next_quarantine_frame = 0
         
     def append_frame(self, frame_data, quarantine=False):
@@ -32,15 +34,21 @@ class MP3FrameList():
             self._next_quarantine_frame += 1
         else:
             if self._next_frame >= self._chunksize: #chunk's full, add another
-                self._chunks.append(np.zeros(self._chunksize, dtype=MP3FrameList._FRAMETYPE))
+                self._chunks.append(np.zeros(self._chunksize, 
+                                    dtype=MP3FrameList._FRAMETYPE))
                 self._next_frame = 0
                 self._current_chunk += 1
             self._chunks[self._current_chunk][self._next_frame] = frame_data
             self._next_frame += 1
-        
-    def conditional_append_frame(self, header_struct, position, quarantine=False):
+
+#pylint:disable=too-many-locals
+#locals used for speed because this is an inner-loop function        
+    def conditional_append_frame(self, header_struct, position, 
+                                 quarantine=False):
         """Adds a frame to the list if it is valid.  Returns None if invalid,
-           or frame size if valid."""
+           or frame size if valid.  quarantine means that the frame will be
+           added to a special conditional array, which will only be accepted
+           when accept_quarantine is called"""
         head_h = header_struct.h
         seek_tag = head_h.seek_tag
         bitrate_raw = head_h.bitrate
@@ -54,10 +62,10 @@ class MP3FrameList():
             frequency_raw == 3:
             return None
         #calculate frame size
-        _TABLES = mp3header.HeaderStruct
-        kbitrate = _TABLES.kbitrates[version_raw][layer_raw][bitrate_raw]
-        samplebits = _TABLES.samples[version_raw][layer_raw]
-        frequency = _TABLES.frequencies[version_raw][frequency_raw]
+        tables = mp3header.HeaderStruct
+        kbitrate = tables.kbitrates[version_raw][layer_raw][bitrate_raw]
+        samplebits = tables.samples[version_raw][layer_raw]
+        frequency = tables.frequencies[version_raw][frequency_raw]
         padding = head_h.padding_flag
         if 3 == layer_raw:
             padding = padding << 2 #is 4 bytes /w layer 1, 1 byte /w 2 & 3
@@ -65,6 +73,7 @@ class MP3FrameList():
         #Finally, add it to our array and report success
         self.append_frame((header_struct.d, position, framesize), quarantine)
         return framesize
+#pylint:enable=too-many-locals    
     
     def discard_quarantine(self):
         """Invalidate potential frames in quarantine"""
