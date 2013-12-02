@@ -46,15 +46,14 @@ class MP3File():
                 print("File {}: {} bytes".format(self.filename, 
                                                  byte_array.get_size()))
             lockon = False
-            prev = 0 #Last identified byte
+            prev_byte = 0 #Last identified byte
+            #local variables for quick access inside loop
             consecutive = config.OPTS.consecutive_frames_to_id
             header_s = mp3header.HeaderStruct()
             verbosity = config.OPTS.verbosity
             append_frame = self.frames.conditional_append_frame
-            #_mp3frame = mp3framelist.MP3FrameList #TODO: frame to framelist
             while True:
-                if not lockon:
-                    prev_byte = prev 
+                if not lockon: 
                     if verbosity >= 3:
                         print("Searching for {} consecutive frames at offset {}"\
                               .format(consecutive, prev_byte))
@@ -71,14 +70,14 @@ class MP3File():
                         self.other.append(DataFrame(prev_byte, 
                                                     first_pos - prev_byte))
                     lockon = True #If we haven't exited, we should be locked on.
-                    prev = next_pos #If we locked on, we identified to here.
+                    prev_byte = next_pos #If we locked on, we identified to here.
                 if array_size <= next_pos: #EOF check
                     break 
                 header_s = byte_array.read_header_struct(next_pos)
                 length = append_frame(header_s, next_pos)
                 if length: #If the header was valid, it's info was added
                     next_pos += length #TODO: free bitrate frames?
-                    prev = next_pos
+                    prev_byte = next_pos
                 else: #We found something else; start searching again
                     if verbosity >=3:
                         print("lockon lost")
@@ -101,8 +100,8 @@ class MP3File():
         ctdn = consecutive_check
         for potential in potentials:
             next_pos = potential[0]
-            #header = potential[1]
-            while ctdn:
+            #header = potential[1] #TODO: remove this from the generators (we aren't using it)
+            while ctdn: #TODO: use local variables for these long lookups to speed lockons.
                 header = byte_array.read_header_struct(next_pos)
                 length = self.frames.conditional_append_frame(header, next_pos, quarantine=True)
                 if length:

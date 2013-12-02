@@ -14,7 +14,7 @@ def build_test_suites(cases=None):
        tests, and long tests."""
     my_test_suites = []
     if None == cases:
-        test_cases = [Test_MP3File] #header, framelist
+        test_cases = [Test_MP3Header, Test_MP3FrameList, Test_MP3File]
     else:
         test_cases = cases
     test_types = ['short', 'medium', 'long']

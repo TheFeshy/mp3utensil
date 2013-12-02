@@ -47,9 +47,7 @@ class SampleMP3File():
         self.last_header = None
         
     def add_bytes(self, length):
-        r = []
-        for i in range(length):
-            r.append(random.randint(0,255))
+        r = [random.randint(0,255) for i in range(length)]
         self.file.write(bytes(r))
         
     def add_char(self, char):
@@ -83,8 +81,8 @@ class SampleMP3File():
         elif "emphasis" == key:
             header_struct.h.emphasis = value
             
-    def add_header(self, header_dict=_DEFAULT):
-        h_dict = copy(header_dict)
+    def add_header(self, header_dict=None):
+        h_dict = header_dict or SampleMP3File._DEFAULT
         h = mp3header.HeaderStruct()
         h.h.seek_tag = 2047
         for i in self._RANGES.keys():
@@ -97,7 +95,8 @@ class SampleMP3File():
         self.file.write(h.h)
         return h
     
-    def add_frame(self, header_dict=_DEFAULT):
+    def add_frame(self, header_dict=None):
+        header_dict = header_dict or SampleMP3File._DEFAULT
         h = self.add_header(header_dict)
         _TABLES = mp3header.HeaderStruct
         kbitrate = _TABLES.kbitrates[h.h.version][h.h.layer][h.h.bitrate]
@@ -109,8 +108,8 @@ class SampleMP3File():
         framesize = ((kbitrate * 125 * samplebits) // frequency) + padding
         self.add_bytes(framesize-4) #four bytes for header
         
-    def add_valid_frame(self, header_dict=_DEFAULT):
-        h_dict = copy(header_dict)
+    def add_valid_frame(self, header_dict=None):
+        h_dict = header_dict or SampleMP3File._DEFAULT
         for i in SampleMP3File._INVALID.keys():
             while None == h_dict[i] or h_dict[i] == SampleMP3File._INVALID[i]:
                 h_dict[i] = random.getrandbits(self._RANGES[i])
@@ -118,8 +117,8 @@ class SampleMP3File():
             h_dict['bitrate'] = random.getrandbits(self._RANGES['bitrate'])
         self.add_frame(h_dict)
         
-    def add_valid_frames(self, count=1, header_dict=_DEFAULT):
-        h_dict = copy(header_dict)
+    def add_valid_frames(self, count=1, header_dict=None):
+        h_dict = header_dict or SampleMP3File._DEFAULT
         if count >= 1:
             self.add_valid_frame(h_dict)
             h_dict = self.last_header
@@ -127,7 +126,8 @@ class SampleMP3File():
             for i in range(count):
                 self.add_valid_frame(h_dict)
                 
-    def add_mixed_valid_frames(self, count=1, header_dict=_DEFAULT):
+    def add_mixed_valid_frames(self, count=1, header_dict=None):
+        h_dict = header_dict or SampleMP3File._DEFAULT
         h_dict = copy(header_dict)
         for i in range(count):
             self.add_valid_frame(h_dict)

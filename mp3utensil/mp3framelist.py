@@ -1,4 +1,6 @@
 # pylint: disable=trailing-whitespace, old-style-class, slots-on-old-class
+# pylint: disable=no-member
+# no-member because pylit isn't handling numpy imports properly.
 """ Used for storing and interpreting individual frames in an mp3 file. """
 import mp3header
 import numpy as np
