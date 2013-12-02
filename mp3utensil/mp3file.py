@@ -103,12 +103,15 @@ class MP3File():
         #TODO: "lockon" by identifying valid crc frames too?
         potentials = byte_array.generate_potential_h_structs(prev)
         ctdn = consecutive_check
+        #local methods for speed
+        read_header = byte_array.read_header_struct
+        conditional_append = self.frames.conditional_append_frame
+        discard_quarantine = self.frames.discard_quarantine
         for next_pos in potentials:
             first_pos = next_pos
             while ctdn: #TODO: use local variables for speed
-                header = byte_array.read_header_struct(next_pos)
-                length = self.frames.conditional_append_frame(header, next_pos,
-                                                              quarantine=True)
+                header = read_header(next_pos)
+                length = conditional_append(header, next_pos, quarantine=True)
                 if length:
                     ctdn -= 1
                     next_pos += length
@@ -117,7 +120,7 @@ class MP3File():
                     break
             if ctdn: #We didn't make the required consecutive frames
                 ctdn = consecutive_check #reset the counter for the next pass
-                self.frames.discard_quarantine()
+                discard_quarantine()
             else:
                 self.frames.accept_quarantine()
                 return next_pos, first_pos 
