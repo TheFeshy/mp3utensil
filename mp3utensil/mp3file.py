@@ -200,39 +200,7 @@ class PythonArrays():
         cut_array = self.bytearray[skip:]
         for offset, byte in enumerate(cut_array):
             if 255 == byte:
-                offset += skip
-                yield offset
-
-        """2.69 on test
-        potentials = (x[0] for x in enumerate(self.bytearray[skip:]) \
-                     if x[1] == 255)
-        for location in potentials:
-            location += skip
-            yield (location, self.read_header_struct(location))
-        return None"""
-        """2.112 on test
-        size = self.get_size()
-        array = self.bytearray
-        for i in range(skip, size):
-            if 255 == array[i]:
-                yield (i, self.read_header_struct(i))
-        return None"""
-        """2.2 on test
-        size = self.get_size()
-        array = self.bytearray
-        potentials = ((x, self.read_header_struct(x)) for x in \
-                      range(skip,size) if array[x] == 255)
-        #return potentials
-        for location in potentials:
-            yield location #(location, self.read_header_struct(location))
-        return None"""
-        """7.2 on test
-        cut_array = self.bytearray[skip:]
-        potentials = filter(lambda x: x[1] == 255, enumerate(cut_array))
-        for i in potentials:
-            offset = i[0] + skip
-            yield offset, self.read_header_struct(offset) 
-        return None"""
+                yield offset + skip
         
     def read_header_struct(self, pos):
         """Returns a header struct if given a position in the array."""
