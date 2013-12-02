@@ -103,9 +103,8 @@ class MP3File():
         #TODO: "lockon" by identifying valid crc frames too?
         potentials = byte_array.generate_potential_h_structs(prev)
         ctdn = consecutive_check
-        for potential in potentials:
-            next_pos = potential[0]
-            #header = potential[1] #TODO: remove this from the generators
+        for next_pos in potentials:
+            first_pos = next_pos
             while ctdn: #TODO: use local variables for speed
                 header = byte_array.read_header_struct(next_pos)
                 length = self.frames.conditional_append_frame(header, next_pos,
@@ -121,7 +120,7 @@ class MP3File():
                 self.frames.discard_quarantine()
             else:
                 self.frames.accept_quarantine()
-                return next_pos, potential[0] 
+                return next_pos, first_pos 
         return None, None         
 
 class NumpyArrays():
@@ -159,7 +158,7 @@ class NumpyArrays():
             for location in possibleheaders:
                 location = int(location)
                 location += skip
-                yield (location, self.read_header_struct(location))
+                yield location
             max_peek += 65535
             skip += 65535
             max_peek = min(size, skip+lookahead)
@@ -199,7 +198,7 @@ class PythonArrays():
         for offset, byte in enumerate(cut_array):
             if 255 == byte:
                 offset += skip
-                yield (offset, self.read_header_struct(offset))
+                yield offset
 
         """2.69 on test
         potentials = (x[0] for x in enumerate(self.bytearray[skip:]) \
