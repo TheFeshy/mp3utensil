@@ -41,7 +41,7 @@ def conditional_cpu_profile(sort, max_rows):
             return func
     return profile_decorator
     
-@conditional_cpu_profile(sort='tottime', max_rows=100)
+@conditional_cpu_profile(sort='tottime', max_rows=10)
 @conditional_memory_profile
 def main():
     """Program entry point"""

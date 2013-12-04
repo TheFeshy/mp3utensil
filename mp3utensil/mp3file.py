@@ -16,7 +16,7 @@ import config
 if config.OPTS.use_numpy:
     import numpy as np
 
-
+_MAX_INDEX_METHOD_SEARCHES = 10
 DataFrame = namedtuple("DataFrame", ["position", "length"])
 
 class MP3File():
@@ -193,7 +193,23 @@ class PythonArrays():
             skip = 0
         else:
             skip = skip + 1
-        #1.9 on test 1
+        #The index method is considerably faster under certain circumstances,
+        #but is also considerably (and pathologically) slower under other
+        #circumstances.  The index method is much faster for large areas
+        #without a hit, but can take far longer for files with many evenly
+        #distributed hits.  Limiting the number of index searches we do
+        #per generator is a compromise that allows the generator to skip
+        #large tags (which have few hits) quickly, yet still quickly identify
+        #files with no hits at all.
+        index_method = _MAX_INDEX_METHOD_SEARCHES
+        while index_method:
+            try:
+                skip += self.bytearray[skip:].index(255)
+            except ValueError:
+                break
+            yield skip
+            skip += 1
+            index_method -= 1
         cut_array = self.bytearray[skip:]
         for offset, byte in enumerate(cut_array):
             if 255 == byte:

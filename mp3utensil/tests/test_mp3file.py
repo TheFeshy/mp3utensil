@@ -311,6 +311,61 @@ class Test_MP3File(unittest.TestCase):
         self.assertEqual(frame_restart, mfile.frames[10][1], "Didn't detect next full frame")
         self.assertEqual(junk_start, mfile.other[0][0], "Junk not found in correct location (junk is valid frame cut short)")
         self.assertEqual(13, mfile.other[0][1], "Junk found had wrong length (junk i svalid frame cut short)")
+        
+    def test_short_19_python_extended_lockon_test(self):
+        """Because the python code uses two different methods to lock on - one
+           to skip large empty chunks and one to quickly parse frequent hits,
+           we must test both by exceeding the limit of the first."""
+        config.OPTS.consecutive_frames_to_id = 3
+        config.OPTS.use_numpy = False
+        temp = SampleMP3File()
+        temp.add_valid_frames(5)
+        junkstart = temp.get_size()
+        for _ in range(mp3file._MAX_INDEX_METHOD_SEARCHES * 2):
+            temp.add_bytes(11)
+            temp.add_char(255)
+        nextframe = temp.get_size()
+        temp.add_valid_frames(5)
+        mfile = mp3file.MP3File(temp.get_file())
+        mfile.scan_file()
+        self.assertEqual(nextframe, mfile.frames[5][1], "unable to find frame with secondary lockon method")
+        self.assertEqual(junkstart, mfile.other[0][0], "junk foun in wrong location")
+        self.assertEqual(24 * mp3file._MAX_INDEX_METHOD_SEARCHES, mfile.other[0][1], "junk found was wrong size")
+    
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")    
+    def test_short_20_numpy_identify_frame_after_false_seek(self):
+        """Makes sure that false seek flags immediately before valid frame
+           data are skipped as junk"""
+        config.OPTS.use_numpy = True
+        self.identify_frame_after_false_seek()
+        
+    def test_short_21_python_identify_frame_after_false_seek(self):
+        """Makes sure that false seek flags immediately before valid frame
+           data are skipped as junk"""
+        config.OPTS.use_numpy = False
+        self.identify_frame_after_false_seek()
+        
+    def identify_frame_after_false_seek(self):
+        """Implimentation of above"""
+        config.OPTS.consecutive_frames_to_id = 3
+        temp = SampleMP3File()
+        temp.add_char(255)
+        temp.add_valid_frames(5)
+        junkstart = temp.get_size()
+        temp.add_char(255)
+        temp.add_char(255)
+        framestart = temp.get_size()
+        temp.add_valid_frames(5)
+        mfile = mp3file.MP3File(temp.get_file())
+        mfile.scan_file()
+        self.assertEqual(1, mfile.frames[0][1], "Didn't skip false seek byte")
+        self.assertEqual(0, mfile.other[0][0], "junk #1 found in wrong location")
+        self.assertEqual(junkstart, mfile.other[1][0], "junk #2 found in wrong location")
+        self.assertEqual(2, mfile.other[1][1], "junk was wrong length")
+        self.assertEqual(framestart, mfile.frames[5][1], "Didn't skip 2 byte false seek tag")
+        
+        
+           
     
     def tearDown(self):
         """restore opts"""
