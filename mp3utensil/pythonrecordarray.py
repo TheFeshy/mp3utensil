@@ -5,7 +5,6 @@
    with python arrays."""
    
 from array import array
-import numpy as np
 
 class PythonRecordArray():
     """This provides "record array" like functionality (like in numpy)
@@ -17,18 +16,6 @@ class PythonRecordArray():
         for name,ntype in dtype:
             self.names[name] = len(self.arraylist)
             self.arraylist.append(array(ntype, (init,)*count))
-            '''if ntype == np.uint16:
-                self.arraylist.append(array(PythonRecordArray.uint16, 
-                                            (init,)*count))
-            elif ntype == np.uint32:
-                self.arraylist.append(array(PythonRecordArray.uint32, 
-                                            (init,)*count))
-            elif ntype == np.uint64:
-                self.arraylist.append(array(PythonRecordArray.uint64, 
-                                            (init,)*count))
-            else:
-                raise TypeError("{} type can not be converted to ctype array"\
-                                .format(ntype))'''
     
     def __getitem__(self, index):
         """Retrieves an entire record as a list"""

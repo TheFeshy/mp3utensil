@@ -4,7 +4,6 @@
 
 import unittest
 import pythonrecordarray
-import numpy as np
 
 class Test_PythonRecordArray(unittest.TestCase):
     """Test class for PythonRecordArray"""

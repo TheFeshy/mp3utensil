@@ -1,6 +1,6 @@
 # pylint: disable=trailing-whitespace, import-error, invalid-name
 # pylint: disable=protected-access, line-too-long
-'''Test Module for mp3frame module'''
+'''Test Module for mp3file module'''
 
 import unittest
 import random
