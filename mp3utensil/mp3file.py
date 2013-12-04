@@ -16,7 +16,7 @@ import config
 if config.OPTS.use_numpy:
     import numpy as np
 
-_MAX_INDEX_METHOD_SEARCHES = 10
+_MAX_INDEX_METHOD_SEARCHES = 1
 DataFrame = namedtuple("DataFrame", ["position", "length"])
 
 class MP3File():
@@ -202,6 +202,11 @@ class PythonArrays():
         #large tags (which have few hits) quickly, yet still quickly identify
         #files with no hits at all.
         index_method = _MAX_INDEX_METHOD_SEARCHES
+        #Additionally, the slice and index overhead increases dramatically with
+        #size, so reduce the index attempts for large files.  (These operations
+        #should be O(n), but it doesn't appear to be the case.)
+        divisor = min(len(self.bytearray)//10*1024*1024,1)
+        index_method = min(max(index_method // divisor,10),1)
         while index_method:
             try:
                 skip += self.bytearray[skip:].index(255)
