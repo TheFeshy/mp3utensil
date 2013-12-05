@@ -34,22 +34,21 @@ class MP3File():
     def scan_file(self):
         """Identifies valid mp3 frames in a file, and separates out anything
            that isn't a valid mp3 frame as 'data'."""
-        #TODO: Pre-scan for ID3 and similar tags?
         with open(self.filename, "rb") as file:
             self.scan_file_python_or_numpy(file)
-        self.scan_non_frame_data(id3.find_and_idenitfy_v1_tags)
+        self.scan_non_frame_data([id3.find_and_idenitfy_v1_tags,])
             
-    def scan_non_frame_data(self,identify_function):
-        """Scans any unidentified data for ID3v1 tags"""
-        examined = []
-        i = 0
-        others = self.other
-        while i < len(others): #use while loop because list size increases
-            if isinstance(others[i], id3.Unknown):
-                identified = identify_function(others[i], self.byte_array)
-                examined += identified
-            i += 1
-        self.other = examined
+    def scan_non_frame_data(self,identify_functions):
+        """Scans each binary slice we identified, using a list of functions
+           to match each type of metadata.""" 
+        matched = []
+        unmatched = []
+        for bin_slice in self.other:
+            hit, miss = bin_slice.search_within(identify_functions)
+            if hit:
+                matched += hit
+            unmatched += miss
+        self.other = matched + unmatched
         
                     
     
@@ -81,12 +80,14 @@ class MP3File():
                           .format(consecutive, first_pos))
                 if None == next_pos: #EOF reached while searching; save junk
                     if prev_byte < array_size:
-                        self.other.append(id3.Unknown(prev_byte, 
-                            byte_array.get_slice(prev_byte, array_size),None))
+                        self.other.append(id3.BinSlice(prev_byte, 
+                            byte_array.get_slice(prev_byte, array_size),
+                                                 self.byte_array))
                     break #We've found all the frames we can
                 elif first_pos > prev_byte: #Tag the parts we skipped
-                    self.other.append(id3.Unknown(prev_byte, 
-                            byte_array.get_slice(prev_byte, first_pos), None))
+                    self.other.append(id3.BinSlice(prev_byte, 
+                            byte_array.get_slice(prev_byte, first_pos), 
+                                                 self.byte_array))
                 lockon = True #If we haven't exited, we should be locked on.
                 prev_byte = next_pos #If we locked on, we identified to here.
             if array_size <= next_pos: #EOF check

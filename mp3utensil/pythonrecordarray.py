@@ -18,13 +18,14 @@ class PythonRecordArray():
             self.arraylist.append(array(ntype, (init,)*count))
     
     def __getitem__(self, index):
-        """Retrieves an entire record as a list"""
+        """Retrieves a entire record at a given index as a list"""
         record = []
         for _array in self.arraylist:
             record.append(_array[index])
         return record
     
     def __setitem__(self, index, values):
+        """Sets a record at a given index to the values passed in"""
         for array_index, value in enumerate(values):
             self.arraylist[array_index][index] = value
     
@@ -46,4 +47,4 @@ class PythonRecordArray():
     
     def __delitem__(self):
         #TODO: Delete things from the array
-        raise Exception("Not yet implimented")
+        raise Exception("Delete Item not yet implemented")
