@@ -127,3 +127,29 @@ class Test_ID3(unittest.TestCase):
         self.assertEqual(id3.ID3v1x, type(mfile.other[0]), "failed to identify v1 tag")
         self.assertEqual(1, mfile.other[0].subversion, "Identified wrong subversion of tag")
         self.assertEqual(0, mfile.other[0].pos, "failed to idenitfy correct starting location")
+        
+    @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")
+    def test_short_08_numpy_multiple_junk(self):
+        """tests identifying version 1.1"""
+        config.OPTS.use_numpy = True
+        self.multiple_junk()
+        
+    def test_short_09_python_multiple_junk(self):
+        """tests identifying version 1.1"""
+        config.OPTS.use_numpy = False
+        self.multiple_junk()
+        
+    def multiple_junk(self):
+        """implements the above"""
+        config.OPTS.consecutive_frames_to_id = 3 
+        temp = SampleMP3File()
+        temp.add_bytes(200)
+        temp.add_valid_frames(5)
+        tagstart = temp.get_size()
+        temp.add_id3v1_tag("a title","an artist", "an album",track=5)
+        mfile = mp3file.MP3File(temp.get_file())
+        mfile.scan_file()
+        self.assertEqual(2, len(mfile.other),"More than one tag found")
+        self.assertEqual(id3.ID3v1x, type(mfile.other[1]), "failed to identify v1 tag")
+        self.assertEqual(1, mfile.other[1].subversion, "Identified wrong subversion of tag")
+        self.assertEqual(tagstart, mfile.other[1].pos, "failed to idenitfy correct starting location")
