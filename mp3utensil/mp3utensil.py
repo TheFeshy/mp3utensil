@@ -54,7 +54,6 @@ def main():
     for file in config.OPTS.files:
         mfile = mp3file.MP3File(file)
         mfile.scan_file()
-        mfile.identify_junk()
          
 if __name__ == '__main__':
     main()

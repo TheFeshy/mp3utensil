@@ -56,6 +56,33 @@ class SampleMP3File():
     def add_char(self, char):
         """Adds a single given byte to the file."""
         self.file.write(bytes((char,)))
+        
+    def add_string(self, string, size):
+        """adds a string as ascii bytes to the file"""
+        for character in string:
+            self.add_char(ord(character))
+        for _ in range(size - len(string)):
+            self.add_char(0)
+
+#pylint: disable=too-many-arguments        
+    def add_id3v1_tag(self,title='',artist='',album='',year='',
+                      comment='',track=None,genre=''):
+        """Make sure these tags do not exceed the allowed lenghts (usually
+           30 bytes) as this is a testing class and no real checking is done."""
+        self.add_string("TAG",3)
+        self.add_string(title, 30)
+        self.add_string(artist,30)
+        self.add_string(album,30)
+        self.add_string(year,4)
+        comment_size = 30
+        if track:
+            comment_size = 28
+        self.add_string(comment,comment_size)
+        if track:
+            self.add_char(0)
+            self.add_char(track)
+        self.add_string(genre,1)
+        
 
 #pylint:disable=too-many-branches
 #Unfortunately the struct methods aren't indexable!        

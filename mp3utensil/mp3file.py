@@ -6,18 +6,17 @@
    groups of mp3 frames, metadata, and unknown chunks (which may be broken
    frames or anything else."""
 
-from collections import namedtuple
 import array
 
 import mp3framelist
 import mp3header
 import config
+import id3
 
 if config.OPTS.use_numpy:
     import numpy as np
 
 _MAX_INDEX_METHOD_SEARCHES = 1
-DataFrame = namedtuple("DataFrame", ["position", "slice", "type"])
 
 class MP3File():
     '''This class contains methods to break an mp3 file into its
@@ -30,6 +29,7 @@ class MP3File():
             self._array_type = NumpyArrays
         else:
             self._array_type = PythonArrays
+        self.byte_array = None
         
     def scan_file(self):
         """Identifies valid mp3 frames in a file, and separates out anything
@@ -37,15 +37,31 @@ class MP3File():
         #TODO: Pre-scan for ID3 and similar tags?
         with open(self.filename, "rb") as file:
             self.scan_file_python_or_numpy(file)
+        self.scan_non_frame_data()
+            
+    def scan_non_frame_data(self):
+        """Scans any unidentified data for ID3v1 tags"""
+        examined = []
+        i = 0
+        others = self.other
+        while i < len(others): #use while loop because list size increases
+            if isinstance(others[i], id3.Unknown):
+                identified = id3.find_and_idenitfy_v1_tags(others[i], 
+                                                           self.byte_array)
+                examined += identified
+            i += 1
+        self.other = examined
+        
+                    
     
     def scan_file_python_or_numpy(self, file):
-        """Python and numpy implimentation of the file scanner"""
-        byte_array = self._array_type(file)
-        array_size = byte_array.get_size()
+        """Python and numpy implementation of the file scanner"""
+        self.byte_array = self._array_type(file)
+        array_size = self.byte_array.get_size()
         self.frames = mp3framelist.MP3FrameList(file_size=array_size)
         if config.OPTS.verbosity >= 3:
             print("File {}: {} bytes".format(self.filename, 
-                                             byte_array.get_size()))
+                                             self.byte_array.get_size()))
         lockon = False
         prev_byte = 0 #Last identified byte
         #local variables for quick access inside loop
@@ -53,6 +69,7 @@ class MP3File():
         header_s = mp3header.HeaderStruct()
         verbosity = config.OPTS.verbosity
         append_frame = self.frames.conditional_append_frame
+        byte_array = self.byte_array
         while True:
             if not lockon: 
                 if verbosity >= 3:
@@ -65,12 +82,12 @@ class MP3File():
                           .format(consecutive, first_pos))
                 if None == next_pos: #EOF reached while searching; save junk
                     if prev_byte < array_size:
-                        self.other.append(DataFrame(prev_byte, 
-                                            byte_array.get_slice(prev_byte, array_size),None))
+                        self.other.append(id3.Unknown(prev_byte, 
+                            byte_array.get_slice(prev_byte, array_size),None))
                     break #We've found all the frames we can
                 elif first_pos > prev_byte: #Tag the parts we skipped
-                    self.other.append(DataFrame(prev_byte, 
-                                            byte_array.get_slice(prev_byte, first_pos), None))
+                    self.other.append(id3.Unknown(prev_byte, 
+                            byte_array.get_slice(prev_byte, first_pos), None))
                 lockon = True #If we haven't exited, we should be locked on.
                 prev_byte = next_pos #If we locked on, we identified to here.
             if array_size <= next_pos: #EOF check
@@ -84,12 +101,6 @@ class MP3File():
                 if verbosity >=3:
                     print("lockon lost")
                 lockon = False
-                    
-    def identify_junk(self):
-        """This tries to identify data that was previously excluded as
-           "non-frame" data."""
-        for j in self.other:
-            print("Offset {}, size {}".format(j.position, j.length))
                     
     def get_lockon(self, byte_array, prev, consecutive_check):
         """The tags that identify MP3 frames can appear by chance.  To
@@ -151,11 +162,11 @@ class NumpyArrays():
         """
         skip += 1
         if None == chunk:
-            size = self.get_size() - 3 #Skip the last partial byte (not a header)
+            size = self.get_size() - 3 #Skip the last bytes (too small)
             chunk = self.byte_array
         else:
             size = len(chunk)
-        skip = min(max(skip,0),size) #sanity check that skip is in the correct range
+        skip = min(max(skip,0),size) #sanity check that skip is reasonable
         lookahead = 65535
         max_peek = min(size, skip+lookahead)
         possibleheaders = np.where(chunk[skip:max_peek] == match)[0]
@@ -228,7 +239,7 @@ class PythonArrays():
             index_method -= 1
         cut_array = chunk[skip:]
         for offset, byte in enumerate(cut_array):
-            if 255 == byte:
+            if match == byte:
                 yield offset + skip
         
     def read_header_struct(self, pos):
