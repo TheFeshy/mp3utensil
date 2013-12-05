@@ -32,6 +32,10 @@ def discover_options():
                         the number of such consecutive frames required for a \
                         positive ID here.", metavar="[integer 1 to 50]", 
                         choices=range(1,50))
+    advanced_options.add_argument("--no-id31-heuristics", action="store_true",
+                        help="Don't guess at ID3v1.x tag validity; treat any \
+                              128 bytes after the value 'TAG' contained in a \
+                              non-mp3 frame region as a tag.")
     debug_options.add_argument("--no-numpy", action="store_true",
                         help="Don't use numpy for processing, even if it\
                               is available")

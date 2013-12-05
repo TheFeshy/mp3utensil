@@ -37,17 +37,16 @@ class MP3File():
         #TODO: Pre-scan for ID3 and similar tags?
         with open(self.filename, "rb") as file:
             self.scan_file_python_or_numpy(file)
-        self.scan_non_frame_data()
+        self.scan_non_frame_data(id3.find_and_idenitfy_v1_tags)
             
-    def scan_non_frame_data(self):
+    def scan_non_frame_data(self,identify_function):
         """Scans any unidentified data for ID3v1 tags"""
         examined = []
         i = 0
         others = self.other
         while i < len(others): #use while loop because list size increases
             if isinstance(others[i], id3.Unknown):
-                identified = id3.find_and_idenitfy_v1_tags(others[i], 
-                                                           self.byte_array)
+                identified = identify_function(others[i], self.byte_array)
                 examined += identified
             i += 1
         self.other = examined

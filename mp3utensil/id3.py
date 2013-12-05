@@ -19,6 +19,7 @@ class Unknown():
 
 class ID3v1x():
     """Represents an ID3v1 or ID3v1.1 tag"""
+    #These values guide the heuristic "is this really a tag" check.
     _HEURISTIC = {0:(29,59,89,123),
                   1:(29,59,89,121)}
     _HEURISTIC_MIN = 5
@@ -45,12 +46,13 @@ class ID3v1x():
            
            This should only check for null characters, but some brain-dead
            taggers use spaces instead."""
+        if config.OPTS.no_id31_heuristics:
+            return True #Skip this if the user don't want it.
         heuristic_count = 0
         for stop in ID3v1x._HEURISTIC[self.subversion]:
             for character in self.data[stop - 4:stop]:
                 if 0 == character or 32 == character:
                     heuristic_count += 1
-        print(heuristic_count)
         return heuristic_count >= ID3v1x._HEURISTIC_MIN
 
 def find_and_idenitfy_v1_tags(data, data_class):
