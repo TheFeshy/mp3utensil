@@ -5,10 +5,9 @@
 import unittest
 import array
 import config
-from sample_file_maker import SampleMP3File #@UnresolvedImport
 import mp3file
-
 import id3
+from sample_file_maker import SampleMP3File #@UnresolvedImport
 
 #pylint: disable=too-many-public-methods
 #above is a side-effect of using decorators.
@@ -28,6 +27,20 @@ class Test_ID3(unittest.TestCase):
         tag = id3.ID3v1x(ar)
         self.assertTrue(id3.heuristic_verify(ar), "Unable to verify blank tag")
         self.assertEqual(1, tag.subversion, "unable to verify tag version")
+        
+    def test_short_011_get_set(self):
+        """This tests the id3 getter and setter methods"""
+        ar = array.array('B', [84,65,71,]+ [0]*125)
+        tag = id3.ID3v1x(ar)
+        tag.artist = "test"
+        self.assertEqual('', tag.title, "fields should start emtpy")
+        self.assertEqual('test', tag.artist, "Artist field not properly set")
+        self.assertEqual(tag.subversion, 0, "Tag didn't start as version 1.0")
+        tag.track = 1
+        self.assertEqual(tag.subversion, 1, "Tag didn't update to version 1.1 with track")
+        self.assertEqual(tag.track, 1, "Tag didn't get/set track properly")
+        tag.genre = 5
+        self.assertEqual(tag.genre, 5, "Tag didn't get/set genre properly")
         
     @unittest.skipIf(not config.OPTS.use_numpy, "Numpy not available to test")
     def test_short_02_numpy_basic_id3_test(self):
@@ -154,3 +167,11 @@ class Test_ID3(unittest.TestCase):
         self.assertEqual(id3.ID3v1x, type(tag), "failed to identify v1 tag")
         self.assertEqual(1, tag.subversion, "Identified wrong subversion of tag")
         self.assertEqual(tagstart, tag.position, "failed to idenitfy correct starting location")
+        
+def test_me():
+    """Runs unit tests for the associated module"""
+    import test_all #@UnresolvedImport
+    test_all.run_tests([Test_ID3])
+    
+if __name__ == '__main__':
+    test_me()

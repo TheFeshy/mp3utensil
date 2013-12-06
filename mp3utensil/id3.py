@@ -56,30 +56,30 @@ class BinSlice():
             return None, [self,]            
 # pylint: enable=incomplete-protocol
 
+# pylint: disable=too-few-public-methods
 class ID3v1x():
     """Represents an ID3v1 or ID3v1.1 tag"""
     #These values guide the heuristic "is this really a tag" check.
     HEURISTIC = {0:(29,59,89,123),
                   1:(29,59,89,121)}
     HEURISTIC_MIN = 5
-    _FIELDS = ((('title',0,30), ('artist',30,30), ('album',60,30), 
-                ('year',90,4), ('comment',94,30), ('genre',124,1)),
-               (('title',0,30), ('artist',30,30), ('album',60,30), 
-                ('year',90,4), ('comment',94,28), ('track',122,2), 
-                ('genre',124,1)))
+    _FIELDS = ({'title':(3,30), 'artist':(33,30), 'album':(63,30), 
+                'year':(93,4), 'comment':(97,30), 'genre':(127,1)},
+               {'title':(3,30), 'artist':(33,30), 'album':(63,30), 
+                'year':(93,4), 'comment':(97,28), 'track':(125,2), 
+                'genre':(127,1)})
     def __init__(self, data=None, **kwargs):
         """ignore keyword args; these are here because a common way to create
            this tag is from a BinSlice, which passes information we don't care
            about."""
-        self.fields = [x[0] for x in ID3v1x._FIELDS[1]]
         self.data = data
         self.subversion = 0
         if None != data:
             if 0 == data[125] and data[126]:
                 self.subversion = 1 #If we have a null then track, it's v1.1
-            self.data = bytes(self.data)
+            self.data = bytearray(self.data)
         else:
-            self.data = bytes([0]*128)
+            self.data = bytearray([0]*128)
         if 'position' in kwargs:
             self.position = kwargs['position']
         if config.OPTS.verbosity >= 3 and self.position:
@@ -88,21 +88,43 @@ class ID3v1x():
             
     def __getattr__(self, index):
         """This should enable tag.title style syntax"""
-        if self.fields and index in self.fields:
-            return self.data[ID3v1x._FIELDS[index][1]:ID3v1x._FIELDS[index][1]+
-                             ID3v1x._FIELDS[index][2]]
+        if index in ID3v1x._FIELDS[1].keys():
+            item = ID3v1x._FIELDS[self.subversion][index]
+            if 'track' == index:
+                return int(self.data[item[0]+1])
+            if 'genre' == index:
+                return int(self.data[item[0]])
+            field = self.data[item[0]:item[0]+item[1]]
+            field = bytes([x for x in field if x != 0 and x != 32])
+            return field.rstrip().decode('latin-1')
         else:
             return self.__dict__[index]
     
     def __setattr__(self, index, value):
         """allow us to use convenient tag.title = "something" syntax"""
-        if index != 'fields' and self.fields and index in self.fields:
-            start = ID3v1x._FIELDS[self.subversion][index][1]
-            for position, char in value:
-                self.data[start + position] = ord(char)
+        if index in ID3v1x._FIELDS[1].keys():
+            if 'track' == index: #special handling for this field
+                self.subversion = 1
+                item = ID3v1x._FIELDS[self.subversion][index]
+                self.data[item[0]] = 0
+                self.data[item[0]+1] = value
+                return
+            if 'genre' == index:
+                item = ID3v1x._FIELDS[self.subversion][index]
+                self.data[item[0]] = value
+                return
+            try:
+                value = value.encode(encoding='latin-1')
+            except TypeError:
+                pass #This means we probably got passed bytes anyway
+            item = ID3v1x._FIELDS[self.subversion][index]
+            if len(value) > item[1]: #data too big:
+                ValueError("The ID3 field is not large enough")
+            for position, char in enumerate(value):
+                self.data[item[0] + position] = char
             end = len(value)
             #zero pad the value if necessary
-            for position in ID3v1x._FIELDS[self.subversion][index][1] - end:
+            for position in range(item[1] - end):
                 self.data[end+position] = 0
         else:
             object.__setattr__(self, index, value)
