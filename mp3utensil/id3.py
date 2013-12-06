@@ -20,17 +20,16 @@ class ID3v1x():
         """ignore keyword args; these are here because a common way to create
            this tag is from a BinSlice, which passes information we don't care
            about."""
-        self.data = data
         self.subversion = 0
         if None != data:
             if 0 == data[125] and data[126]:
                 self.subversion = 1 #If we have a null then track, it's v1.1
-            self.data = bytearray(self.data)
+            self.data = bytearray(data)
         else:
             self.data = bytearray([0]*128)
         if 'position' in kwargs:
             self.position = kwargs['position']
-        if config.OPTS.verbosity >= 3 and self.position:
+        if config.OPTS.verbosity >= 3 and None != self.position:
             print("Identified ID3v1.{} tag at {}".format(
                     self.subversion, self.position))
             
@@ -103,7 +102,7 @@ def heuristic_verify(data):
                 heuristic_count += 1
     return heuristic_count >= ID3v1x.HEURISTIC_MIN
 
-def find_and_idenitfy_v1_tags(bin_slice):
+def find_and_identify_v1_tags(bin_slice):
     """takes the offset and slice of previously identified "junk" data
        which is stored in one of the data_classes (our python or numpy
        implementation) and tries to identify ID3 tags in it."""

@@ -12,6 +12,7 @@ import mp3framelist
 import mp3header
 import config
 import id3
+import id3v2
 import binslice as bs
 
 if config.OPTS.use_numpy:
@@ -37,7 +38,8 @@ class MP3File():
            that isn't a valid mp3 frame as 'data'."""
         with open(self.filename, "rb") as file:
             self.scan_file_python_or_numpy(file)
-        self.scan_non_frame_data([id3.find_and_idenitfy_v1_tags,])
+        self.scan_non_frame_data([id3v2.find_and_identify_v2_tags,
+                                  id3.find_and_identify_v1_tags])
             
     def scan_non_frame_data(self,identify_functions):
         """Scans each binary slice we identified, using a list of functions
