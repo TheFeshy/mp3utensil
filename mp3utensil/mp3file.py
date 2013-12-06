@@ -12,6 +12,7 @@ import mp3framelist
 import mp3header
 import config
 import id3
+import binslice as bs
 
 if config.OPTS.use_numpy:
     import numpy as np
@@ -80,12 +81,12 @@ class MP3File():
                           .format(consecutive, first_pos))
                 if None == next_pos: #EOF reached while searching; save junk
                     if prev_byte < array_size:
-                        self.other.append(id3.BinSlice(prev_byte, 
+                        self.other.append(bs.BinSlice(prev_byte, 
                             byte_array.get_slice(prev_byte, array_size),
                                                  self.byte_array))
                     break #We've found all the frames we can
                 elif first_pos > prev_byte: #Tag the parts we skipped
-                    self.other.append(id3.BinSlice(prev_byte, 
+                    self.other.append(bs.BinSlice(prev_byte, 
                             byte_array.get_slice(prev_byte, first_pos), 
                                                  self.byte_array))
                 lockon = True #If we haven't exited, we should be locked on.
