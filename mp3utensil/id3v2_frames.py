@@ -48,10 +48,11 @@ class ID3v2_ID_Generic():
         """Returns the full header size as expanded by flags"""
         return 10 + (self.compression << 2) + self.encrypted + self.group
         
-    def read_from_position(self, position, data):
+    def read_from_position(self, version, data):
         """Reads a single frame from buffer data that starts at position.
            Handles reading all flags and extended frame headers."""
         header_size = 10
+        position = 0 #TODO remove position it's not needed
         self.name = bytes(data[position:position+4]).decode('latin-1')
         self.read_size = size_helper(data[position+4:position+8])
         #if true discard this frame when tag is altered
@@ -95,6 +96,7 @@ class ID3v2_ID_Generic():
             self.data = zlib.decompress(self.data)
             if len(self.data) != self.uncompressed_size:
                 raise Exception("Error uncompressing compressed frame")
+        return self.read_size
             
     def update_data(self, something):
         """All tags that are assigned data will have it done by calling

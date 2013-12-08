@@ -40,9 +40,9 @@ class ID3v2x():
         self.read_size = None
         
         #If we are reading from a file, construct the class from the data read
-        if data and position:
-            if position < 0 or position > data:
-                raise Exception("invalid offset into data given to ID3v2 \
+        if None != data and None != position:
+            if position < 0 or position > len(data):
+                raise ValueError("invalid offset into data given to ID3v2 \
                 constructor.")
             position = self._read_flags(position)
             #TODO: handle unsync processing for v2 &3 here
@@ -57,7 +57,7 @@ class ID3v2x():
            zeroed.  All we need do is mask of the lower 7 bits and shift them
            together."""
         if sum(map(lambda x: x&128, self.data[pos:pos + count])): #header sanity check
-            raise Exception("Illegal bytes in ID3v2 size headers")
+            raise ValueError("Illegal bytes in ID3v2 size headers")
         value = 0
         for offset in range(count):
             value += (self.data[pos+offset] << (((count-offset)-1) * 7))
@@ -83,7 +83,7 @@ class ID3v2x():
         self.read_size = self._read_size_unsynch(pos + 6) + 10
         #version 2:
         if self.version == 2 and self.extended_header_flag: #v2 doesn't actually support this flag
-            raise Exception("ID3v2.2 Tag using unknown compression")
+            raise ValueError("ID3v2.2 Tag using unknown compression")
         #version 3 and 4:
         if self.version >= 3:
             self.experimental_flag = bool(flag_bits & 32)
@@ -104,11 +104,11 @@ class ID3v2x():
             self.padding = self._read_size_normal(pos + 6)
             if self.crc_flag:
                 if self.extended_size < 10:
-                    raise Exception("Invalid combination of flags in ID3v2:\
+                    raise ValueError("Invalid combination of flags in ID3v2:\
                                      CRC but extended header too small.")
                 self.crc = self._read_size_normal(pos + 9)
             if self.data[pos + 4] & 127 or self.data[pos + 5]:
-                raise Exception("Extended header contains unknown flags that \
+                raise ValueError("Extended header contains unknown flags that \
                                  may affect length.")
             return pos + self.extended_size + 4 #size excludes size bytes
         if self.version >= 4:
@@ -130,8 +130,7 @@ class ID3v2x():
         
     def _read_frames(self, pos):
         """Reads frames until it runs out of data or finds empty frames."""
-        current_pos = pos
-        size = self.read_size #len(self.data)
+        size = self.read_size
         id_size = 4
         length_size = 4
         size_reader = self._read_size_normal
@@ -141,15 +140,14 @@ class ID3v2x():
             length_size = 3
         elif self.version == 4:
             size_reader = self._read_size_unsynch
-        while current_pos < (size - (id_size + length_size + 1)):
+        while pos < (size - (id_size + length_size + 1)):
             name = bytes(self.data[pos:pos+id_size]).decode('latin-1')
-            size = size_reader(pos+id_size, length_size)
+            size = size_reader(pos+id_size, length_size) + 10
             if size:
                 class_name = "ID3v2_ID_{}".format(name)
                 frame_class = getattr(id3v2_frames, class_name, None)
                 if None == frame_class:
                     frame_class = id3v2_frames.ID3v2_ID_Generic
-                frame_class = id3v2_frames.ID3v2_ID_Generic
                 frame = frame_class()  
                 found = frame.read_from_position(self.version, 
                                                  self.data[pos:size])
@@ -160,10 +158,10 @@ class ID3v2x():
                     break
             else:
                 break
-        if found > self.read_size:
+        if found and found > self.read_size:
             raise ValueError("ID3v2 tag had more headers than it reported.")
         #respect the reported size, if possible - the rest is padding.
-        return self.read_size + 10
+        return self.read_size
     
     def _read_footer(self, pos):
         if self.version == 4:
@@ -209,7 +207,7 @@ def find_and_identify_v2_tags(bin_slice):
                 tag = ID3v2x(data=chunk, position=i)
                 _, slices = bin_slice.carve_out(None, i, i+tag.read_size)
                 return tag, slices
-            except (TypeError, ValueError):
+            except (TypeError, ValueError) as e:
                 if config.OPTS.verbosity >=1:
-                    print("Malformed ID3v2 tag")
+                    print("Malformed ID3v2 tag: {}".format(e))
     return None, [bin_slice,]
