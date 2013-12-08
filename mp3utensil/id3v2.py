@@ -3,25 +3,195 @@
    represent ID3v2 tags."""
    
 import config
+import id3v2_frames    
 
 # pylint: disable=too-few-public-methods
 class ID3v2x():
-    """A class representing an ID3v2.x tag"""
-    def __init__(self, data=None, **kwargs):
-        """ignore keyword args; these are here because a common way to create
-           this tag is from a BinSlice, which passes information we don't care
-           about."""
-        #TODO: for now just treat this as a binary chunk; but we'll parse and
-        #manipulate it later.
-        self.data = bytearray(data)
-        self.subversion = self.data[3]
-        self.subsubversion = self.data[4]
-        if 'position' in kwargs:
-            self.position = kwargs['position']
-        if config.OPTS.verbosity >= 3 and None != self.position:
-            print("Identified ID3v2.{}.{} tag at {}".format(
-                    self.subversion, self.subsubversion, self.position))
+    """A class representing an ID3v2.x tag.  Currently handles version 
+    ID3v2.2, ID3v2.3, and ID3v2.4"""
+    def __init__(self, data=None, position=None, **kwargs):
            
+        #Initialize with defaults (v2 options)
+        self.data = data
+        self.position = position
+        self.version = 4 #default to the newest version we support
+        if 'version' in kwargs:
+            self.version = kwargs['version']
+        self.subversion = 0
+        self.unsynch_flag = False
+        #v3 options
+        self.extended_header_flag = False
+        self.experimental_flag = False
+        self.extended_size = None
+        self.crc_flag = False
+        self.crc = None
+        self.padding = None
+        #v4 options
+        self.extended_flag_bytes = None
+        self.footer_flag = False
+        self.is_update_flag = False
+        self.restrictions_flag = False
+        self.restrictions = None
+        #internal values:
+        self._frames = []
+        self.read_position = None
+        if position:
+            self.read_position = position
+        self.read_size = None
+        
+        #If we are reading from a file, construct the class from the data read
+        if data and position:
+            if position < 0 or position > data:
+                raise Exception("invalid offset into data given to ID3v2 \
+                constructor.")
+            position = self._read_flags(position)
+            #TODO: handle unsync processing for v2 &3 here
+            position = self._read_extended_header(position)
+            #TODO: handle crc processing for v3 &4 here
+            position = self._read_frames(position)
+            position = self._read_footer(position)
+        
+    def _read_size_unsynch(self, pos, count=4):
+        """Reads the 'no-sync-tag' packed bits of an ID3v2 size.  This format
+           consists essentially of four bytes with the most significant bit
+           zeroed.  All we need do is mask of the lower 7 bits and shift them
+           together."""
+        if sum(map(lambda x: x&128, self.data[pos:pos + count])): #header sanity check
+            raise Exception("Illegal bytes in ID3v2 size headers")
+        value = 0
+        for offset in range(count):
+            value += (self.data[pos+offset] << (((count-offset)-1) * 7))
+        return value
+                
+    def _read_size_normal(self, pos, count=4):
+        """Converts a number of bites to a big-endian int.  Since the size of
+           ints used by an ID3v2 tag varies from 3 to 5 it's helpful to have
+           more control than the standard tools provide."""
+        value = 0
+        for offset in range(count):
+            value += (self.data[pos + offset] << (((count-offset)-1) * 8))
+        return value
+                
+    def _read_flags(self, pos):
+        """Reads the flags and other bits of the ID3v2 header."""
+        #All versions
+        self.version = self.data[pos + 3]
+        self.subversion = self.data[pos + 4]
+        flag_bits = self.data[pos +5]
+        self.unsynch_flag = bool(flag_bits & 128)
+        self.extended_header_flag = bool(flag_bits & 64)
+        self.read_size = self._read_size_unsynch(pos + 6) + 10
+        #version 2:
+        if self.version == 2 and self.extended_header_flag: #v2 doesn't actually support this flag
+            raise Exception("ID3v2.2 Tag using unknown compression")
+        #version 3 and 4:
+        if self.version >= 3:
+            self.experimental_flag = bool(flag_bits & 32)
+        if self.version == 4:
+            self.footer_flag = bool(flag_bits & 16)
+            self.read_size += 10
+        return pos + 10 #Header is always 10 bytes
+    
+    def _read_extended_header(self, pos):
+        """Reads the extended header, if present.  The extended header has
+           some of the most differences between versions."""
+        if self.version == 2 or not self.extended_header_flag:
+            return pos #Version 2 has no extended header
+        if self.version == 3:
+            #This value is always 6 or 10; but is 4 bytes wide.
+            self.extended_size = self.data[pos + 3]
+            self.crc_flag = self.data[pos + 4] #two bytes, and only one flag.
+            self.padding = self._read_size_normal(pos + 6)
+            if self.crc_flag:
+                if self.extended_size < 10:
+                    raise Exception("Invalid combination of flags in ID3v2:\
+                                     CRC but extended header too small.")
+                self.crc = self._read_size_normal(pos + 9)
+            if self.data[pos + 4] & 127 or self.data[pos + 5]:
+                raise Exception("Extended header contains unknown flags that \
+                                 may affect length.")
+            return pos + self.extended_size + 4 #size excludes size bytes
+        if self.version >= 4:
+            #New way of handling extended headers in v4
+            self.extended_size = self._read_size_unsynch(pos)
+            self.extended_flag_bytes = self.data[pos+4]
+            flag_bits = self.data[pos+5]
+            self.is_update_flag = flag_bits & 64
+            self.crc_flag = flag_bits & 32
+            offset = 6
+            if self.crc_flag:
+                self.crc = self._read_size_unsynch(pos + offset, 5)
+                offset += 5
+            self.restrictions_flag = flag_bits & 16
+            if self.restrictions_flag:
+                self.restrictions = self.data[pos + offset]
+                offset += 1
+            return self.extended_size #in v4 size includes header
+        
+    def _read_frames(self, pos):
+        """Reads frames until it runs out of data or finds empty frames."""
+        current_pos = pos
+        size = self.read_size #len(self.data)
+        id_size = 4
+        length_size = 4
+        size_reader = self._read_size_normal
+        #make changes as necessary for other versions
+        if self.version == 2:
+            id_size = 3
+            length_size = 3
+        elif self.version == 4:
+            size_reader = self._read_size_unsynch
+        while current_pos < (size - (id_size + length_size + 1)):
+            name = bytes(self.data[pos:pos+id_size]).decode('latin-1')
+            size = size_reader(pos+id_size, length_size)
+            if size:
+                class_name = "ID3v2_ID_{}".format(name)
+                frame_class = getattr(id3v2_frames, class_name, None)
+                if None == frame_class:
+                    frame_class = id3v2_frames.ID3v2_ID_Generic
+                frame_class = id3v2_frames.ID3v2_ID_Generic
+                frame = frame_class()  
+                found = frame.read_from_position(self.version, 
+                                                 self.data[pos:size])
+                if found:
+                    self._frames.append(frame)
+                    pos += found
+                else:
+                    break
+            else:
+                break
+        if found > self.read_size:
+            raise ValueError("ID3v2 tag had more headers than it reported.")
+        #respect the reported size, if possible - the rest is padding.
+        return self.read_size + 10
+    
+    def _read_footer(self, pos):
+        if self.version == 4:
+            name = bytes(self.data[pos:pos+3]).decode('latin-1')
+            version = self.data[pos + 4]
+            subversion = self.data[pos + 5]
+            size = self._read_size_unsynch(pos + 6, 4)
+            if '3DI' != name or self.version != version or \
+            self.subversion != subversion or self.read_size != size:
+                if config.OPTS.verbosity >= 2:
+                    print("ID3v2 footer values do not match header.")
+            self.read_position += 10
+            
+    def __repr__(self):
+        rep = "ID3v{}.{} ({} bytes) | ".format(self.version, self.subversion, len(self.data))
+        if self.unsynch_flag:
+            rep += "unsynched "
+        if self.experimental_flag:
+            rep += "experimental "
+        if self.extended_header_flag:
+            rep += "| Extended: size{}, padding {} ".format(self.extended_size, self.padding)
+            if self.crc:
+                rep += "crc "
+        rep += "| "
+        for frame in self._frames:
+            rep += " -> {}".format(frame.__repr__())
+        return rep            
+
 def find_and_identify_v2_tags(bin_slice):
     """takes the offset and slice of previously identified "junk" data
        which is stored in one of the data_classes (our python or numpy
@@ -35,9 +205,11 @@ def find_and_identify_v2_tags(bin_slice):
         if 68 == chunk[i+1] and 51 == chunk[i+2] and 255 > chunk[i+3] and \
             255 > chunk[i+4] and 128 > chunk[i+6] and 128 > chunk[i+7] and \
             128 > chunk[i+8] and 128 > chunk[i+9]:
-            #Highest bit is masked off in length; covered by the "if" above
-            tag_length = (chunk[i+6] << 21) + (chunk[i+7] << 14) + \
-                         (chunk[i+8] << 7) + chunk[i+9]
-            #remember that header length (10 bytes) is not included in frame
-            return bin_slice.carve_out(ID3v2x, i, i+10+tag_length)
+            try:
+                tag = ID3v2x(data=chunk, position=i)
+                _, slices = bin_slice.carve_out(None, i, i+tag.read_size)
+                return tag, slices
+            except (TypeError, ValueError):
+                if config.OPTS.verbosity >=1:
+                    print("Malformed ID3v2 tag")
     return None, [bin_slice,]
