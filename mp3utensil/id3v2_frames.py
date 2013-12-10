@@ -1,27 +1,9 @@
 # pylint: disable=trailing-whitespace, old-style-class
-"""This module impliments all of the ID3v2.x frames"""
+"""This module implements all of the ID3v2.x frames"""
 
-#from id3v2 import size_helper
 import zlib
 
-def size_helper(data):
-    """ID3v2 tags use four-byte size tags, with each byte trunkated to 7 bits
-       to avoid false sync values.  This helper function calculates sizes
-       given four such truncated bytes."""
-    if sum(map(lambda x: x&128, data[:4])): #header sanity check
-        raise Exception("Illegal bytes in ID3v2 size headers")
-    #return (data[0] << 21) + (data[1] << 14) + (data[2] << 7)+ data[3]
-    return (data[0] << 24) + (data[1] << 16) + (data[2] << 8)+ data[3]
-    
-
-def truncated_size(size):
-    buf = bytearray()
-    for _ in range(4):
-        buf.append(size & 127)
-        size >> 7
-    if size:
-        raise Exception("Id3v2 Frame size exceeded allowed limits")
-    return buf
+import id3v2common
 
 class ID3v2_ID_Generic():
     """This is the frame base class, and also represents an unknown frame.
@@ -29,109 +11,175 @@ class ID3v2_ID_Generic():
        store it as bytes.  Derived classes can also call this class's 
        read_from_position method to read in all flags, and leave the bytes
        to be parsed in self.data"""
-    def __init__(self):
+    def __init__(self, version, data=None):
         #Set some default values.
+        self.version = version
         self.name = None
         self.tag_alter_discard = False
         self.file_alter_discard = False
         self.read_only = False
-        self.compression = False
-        self.encrypted = False
+        self.compressed_flag = False
+        self.encrypted_flag = False
         self.group_flag = False
-        self.uncompressed_size = None
+        self.data_length_size = None
         self.encryption = None
         self.group = None
         self.data = None
         self.read_size = None
+        self.unsync_flag = False
+        self.data_length_flag = False
+        if None != data:
+            self.data = data
+            self.read()
         
-    def get_header_size(self):
-        """Returns the full header size as expanded by flags"""
-        return 10 + (self.compression << 2) + self.encrypted + self.group
-        
-    def read_from_position(self, version, data):
+    def read(self):
         """Reads a single frame from buffer data that starts at position.
            Handles reading all flags and extended frame headers."""
-        header_size = 10
-        position = 0 #TODO remove position it's not needed
-        self.name = bytes(data[position:position+4]).decode('latin-1')
-        self.read_size = size_helper(data[position+4:position+8])
-        #if true discard this frame when tag is altered
-        bits = data[position+8]
-        self.tag_alter_discard = bool(bits & 128)
-        #if true discard this frame when file is altered
-        self.file_alter_discard = bool(bits & 64)
-        self.read_only = bool(bits & 32)
-        if bits & 31:
-            #TODO: according to spec if these flags are set we leave the frame alone
-            pass
-        bits = data[position+9]
-        self.compression = bool(bits & 128)
-        self.encrypted = bool(bits & 64)
-        self.group_flag = bool(bits & 32)
-        #Use those flags to determine if there are extended header bytes
-        if bits & 31:
-            raise Exception("Frame contains unknown flags which alter its header_size")
-        if self.compression:
-            #TODO: verify that this is '7 bits/byte' header_size; reference doc is unclear
-            self.uncompressed_size = size_helper(data[header_size:header_size+4])
-            header_size += 4
-        else:
-            self.uncompressed_size = None
-        if self.encrypted:
-            self.encryption = data[header_size]
-            header_size += 1
-        else:
-            self.encryption = None
-        if self.group_flag:
-            self.group = data[header_size]
-            header_size += 1
-        else:
-            self.group = None 
-        self.read_size += header_size
-        self.data = bytes(data[header_size+position:self.read_size+position])
-        if self.encrypted:
-            #TODO: Fuss to the user about this, as we don't support it
-            pass
-        if self.compression:
+        data = self.data
+        #Version-specific setups
+        name_size = 3
+        frame_size_size = 3
+        size_reader = id3v2common.read_non_syncsafe
+        if self.version >= 3:
+            name_size = 4
+            frame_size_size = 4
+        if self.version == 4:
+            size_reader = id3v2common.read_syncsafe
+        self.name = bytes(data[:name_size])
+        self.read_size = size_reader(name_size, data, frame_size_size)
+        flags_start = name_size + frame_size_size
+        data_start = flags_start
+        #Version 2.2 has no flags to read, nor extended header info.
+        if self.version == 3:
+            data_start += 2 #two bytes of flags
+            bits = data[flags_start]
+            self.tag_alter_discard = bool(bits & 128) #discard frame w/ tag alt
+            self.file_alter_discard = bool(bits & 64) #discard frame w/file alt
+            self.read_only = bool(bits & 32)
+            if bits & 31:
+                pass #TODO: warn user; these should not be set.
+            bits = data[flags_start+1]
+            self.compressed_flag = bool(bits & 128)
+            self.encrypted_flag = bool(bits & 64)
+            self.group_flag = bool(bits & 32)
+            if bits & 31:
+                raise Exception("Frame contains unknown flags which alter its header_size")
+            if self.compressed_flag:
+                self.data_length_size = size_reader(data[data_start:data_start + 4])
+                data_start += 4
+            if self.encrypted_flag:
+                self.encryption = data[data_start:data_start + 1]
+                data_start += 1
+            if self.group_flag:
+                self.group = data[data_start:data_start + 1]
+                data_start += 1
+        if self.version == 4:
+            data_start += 2 #two bytes of flags
+            bits = data[flags_start]
+            self.tag_alter_discard = bool(bits & 64) #discard frame w/ tag alt
+            self.file_alter_discard = bool(bits & 32) #discard frame w/file alt
+            self.read_only = bool(bits & 16)
+            if bits & 143:
+                pass #TODO: warn user; these flags should not be set.
+            bits = data[flags_start+1]
+            self.group_flag = bool(bits & 64)
+            self.compressed_flag = bool(bits & 8)
+            self.encrypted_flag = bool(bits & 4)
+            self.unsync_flag = bool(bits & 2)
+            self.data_length_flag = bool(bits & 1)
+            if bits & 79:
+                raise Exception("Frame contains unknown flags which alter its header_size")
+            if self.group_flag:
+                self.group = data[data_start:data_start + 1]
+                data_start += 1
+            #Compressed flag uses data length indicator for size
+            if self.encrypted_flag:
+                self.encryption = data[data_start:data_start + 1]
+                data_start += 1
+            if self.data_length_flag:
+                self.data_length_size = size_reader(data[data_start:data_start + 4])
+                data_start += 4
+        #Now we can read the data.  We're all done with header info now, so
+        #discard that 'data' block for a copy of the frame's internal data.
+        self.data = bytes(data[data_start:flags_start + self.read_size])
+        if self.unsync_flag:
+            raise ValueError("Unsynced tags are currently not supported")
+        if self.compressed_flag:
             self.data = zlib.decompress(self.data)
-            if len(self.data) != self.uncompressed_size:
-                raise Exception("Error uncompressing compressed frame")
-        return self.read_size
+            if self.version == 3:
+                if len(self.data) != self.data_length_size:
+                    raise ValueError("Frame data did not decompress to the \
+                          expected size.")
+        if self.encrypted_flag:
+            raise ValueError("Encrypted tags are currently not supported.")
+        self.read_size = self.read_size + flags_start #include header in read
+        
+    def _header_bytes(self):
+        """Converts the header part to a string of bytes.  Used by this class
+           and any derived classes for their __bytes__method."""
+        write_size = 3
+        int_write_type = id3v2common.write_normal
+        if self.version > 2:
+            write_size = 4
+        if self.version == 4:
+            int_write_type = id3v2common.write_syncsafe
+        try:
+            name = self.name.encode('latin-1') #pylint:disable=no-member
+        except TypeError: #If we can't encode it, it is likely already bytes.
+            name = self.name
+        if len(name) != write_size:
+            raise Exception("ID3v2 tag has wrong size name")
+        buf = name
+        buf += int_write_type(self.data, write_size)
+        #version 2 has no flags
+        if self.version == 3:
+            flags = self.tag_alter_discard << 7
+            flags &= self.file_alter_discard << 6
+            flags &= self.read_only << 5
+            buf += flags
+            flags = self.compressed_flag << 7
+            flags &= self.encrypted_flag << 6
+            flags &= self.group_flag << 5
+            buf += flags
+            if self.compressed_flag:
+                buf += int_write_type(len(self.data), write_size)
+            if self.encrypted_flag:
+                buf += int_write_type(self.encryption, 1)
+            if self.group_flag:
+                buf += int_write_type(self.group, 1)
+        if self.version == 4:
+            flags = self.tag_alter_discard << 6
+            flags &= self.file_alter_discard << 5
+            flags &= self.read_only << 4
+            buf += flags
+            flags = self.group_flag << 6
+            flags &= self.compressed_flag << 3
+            flags &= self.encrypted_flag << 2
+            flags &= self.unsync_flag << 1
+            flags &= self.data_length_flag
+            buf += flags
+            if self.group_flag:
+                buf += id3v2common.write_normal(self.group, 1)
+            if self.encrypted_flag:
+                buf += id3v2common.write_normal(self.encryption, 1)
+            if self.data_length_flag:
+                buf += int_write_type(len(self.data), write_size)
+        return buf
+                
             
-    def update_data(self, something):
-        """All tags that are assigned data will have it done by calling
-           this method.  For the generic class, this is easy: just store
-           some bytes.  If it can be stored as bytes, it's valid."""
-        self.data = bytes(something)
         
     def __bytes__(self):
         """Returns a bytearray object containing the binary representation of this
            frame to be stored in an mp3 file."""
-        #first pack the header:
-        buf = bytearray()
-        name = self.name.encode('latin-1')
-        if len(name) != 4:
-            raise Exception("Wrong size frame ID")
-        buf += name
-        buf += truncated_size(self.data + self.get_header_size() - 10)
-        buf.append((self.tag_alter_discard << 8) + \
-                   (self.file_alter_discard << 7) + \
-                   (self.read_only << 6))
-        buf.append((self.compression << 8) + \
-                   (self.encrypted << 7) + \
-                   (self.group_flag << 6))
-        if self.compression:
-            buf += truncated_size(len(self.data))
-            self.data = zlib.compress(self.data)
-            buf += truncated_size(len(self.data))
-            new_size = truncated_size(self.data + self.get_header_size() - 10)
-            for i in range(len(new_size)):
-                buf[4+i] = new_size[i]
-        if self.encrypted:
-            raise Exception("Encrypted frames not currently supported!")
-        if self.group_flag:
-            buf.append(self.group)
-        buf += self.data
+        buf = self._header_bytes()
+        data = self.data
+        if self.unsync_flag:
+            raise ValueError("not yet supported") #TODO implement
+        if self.compressed_flag:
+            data = zlib.compress(data)
+        if self.encrypted_flag:
+            raise ValueError("not yet supported") #TODO implement
+        buf += data
         return buf
     
     def __repr__(self):
@@ -142,10 +190,10 @@ class ID3v2_ID_Generic():
             rep += "tag discard "
         if self.read_only:
             rep += "read only "
-        if self.compression:
+        if self.compressed_flag:
             rep += "compressed "
-        if self.encrypted:
-            rep += "encrypted "
+        if self.encrypted_flag:
+            rep += "encrypted_flag "
         if self.group_flag:
             rep += "group {} ".format(self.group)
         rep += "| {}".format(self.data)

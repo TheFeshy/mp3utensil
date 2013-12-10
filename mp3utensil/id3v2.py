@@ -3,7 +3,8 @@
    represent ID3v2 tags."""
    
 import config
-import id3v2_frames    
+import id3v2_frames   
+import id3v2common 
 
 # pylint: disable=too-few-public-methods
 class ID3v2x():
@@ -50,27 +51,6 @@ class ID3v2x():
             #TODO: handle crc processing for v3 &4 here
             position = self._read_frames(position)
             position = self._read_footer(position)
-        
-    def _read_size_unsynch(self, pos, count=4):
-        """Reads the 'no-sync-tag' packed bits of an ID3v2 size.  This format
-           consists essentially of four bytes with the most significant bit
-           zeroed.  All we need do is mask of the lower 7 bits and shift them
-           together."""
-        if sum(map(lambda x: x&128, self.data[pos:pos + count])): #header sanity check
-            raise ValueError("Illegal bytes in ID3v2 size headers")
-        value = 0
-        for offset in range(count):
-            value += (self.data[pos+offset] << (((count-offset)-1) * 7))
-        return value
-                
-    def _read_size_normal(self, pos, count=4):
-        """Converts a number of bites to a big-endian int.  Since the size of
-           ints used by an ID3v2 tag varies from 3 to 5 it's helpful to have
-           more control than the standard tools provide."""
-        value = 0
-        for offset in range(count):
-            value += (self.data[pos + offset] << (((count-offset)-1) * 8))
-        return value
                 
     def _read_flags(self, pos):
         """Reads the flags and other bits of the ID3v2 header."""
@@ -80,7 +60,7 @@ class ID3v2x():
         flag_bits = self.data[pos +5]
         self.unsynch_flag = bool(flag_bits & 128)
         self.extended_header_flag = bool(flag_bits & 64)
-        self.read_size = self._read_size_unsynch(pos + 6) + 10
+        self.read_size = id3v2common.read_syncsafe(pos + 6, self.data, 4) + 10
         #version 2:
         if self.version == 2 and self.extended_header_flag: #v2 doesn't actually support this flag
             raise ValueError("ID3v2.2 Tag using unknown compression")
@@ -101,26 +81,26 @@ class ID3v2x():
             #This value is always 6 or 10; but is 4 bytes wide.
             self.extended_size = self.data[pos + 3]
             self.crc_flag = self.data[pos + 4] #two bytes, and only one flag.
-            self.padding = self._read_size_normal(pos + 6)
+            self.padding = id3v2common.read_non_syncsafe(pos+6, self.data)
             if self.crc_flag:
                 if self.extended_size < 10:
                     raise ValueError("Invalid combination of flags in ID3v2:\
                                      CRC but extended header too small.")
-                self.crc = self._read_size_normal(pos + 9)
+                self.crc = id3v2common.read_non_syncsafe(pos+9, self.data)
             if self.data[pos + 4] & 127 or self.data[pos + 5]:
                 raise ValueError("Extended header contains unknown flags that \
                                  may affect length.")
             return pos + self.extended_size + 4 #size excludes size bytes
         if self.version >= 4:
             #New way of handling extended headers in v4
-            self.extended_size = self._read_size_unsynch(pos)
+            self.extended_size = id3v2common.read_syncsafe(pos, self.data)
             self.extended_flag_bytes = self.data[pos+4]
             flag_bits = self.data[pos+5]
             self.is_update_flag = flag_bits & 64
             self.crc_flag = flag_bits & 32
             offset = 6
             if self.crc_flag:
-                self.crc = self._read_size_unsynch(pos + offset, 5)
+                self.crc = id3v2common.read_syncsafe(pos+offset, self.data, 5)
                 offset += 5
             self.restrictions_flag = flag_bits & 16
             if self.restrictions_flag:
@@ -133,32 +113,22 @@ class ID3v2x():
         size = self.read_size
         id_size = 4
         length_size = 4
-        size_reader = self._read_size_normal
         #make changes as necessary for other versions
         if self.version == 2:
             id_size = 3
             length_size = 3
-        elif self.version == 4:
-            size_reader = self._read_size_unsynch
         while pos < (size - (id_size + length_size + 1)):
+            #first get some information about the header so we can construct
+            #the correct one.
             name = bytes(self.data[pos:pos+id_size]).decode('latin-1')
-            size = size_reader(pos+id_size, length_size) + 10
-            if size:
-                class_name = "ID3v2_ID_{}".format(name)
-                frame_class = getattr(id3v2_frames, class_name, None)
-                if None == frame_class:
-                    frame_class = id3v2_frames.ID3v2_ID_Generic
-                frame = frame_class()  
-                found = frame.read_from_position(self.version, 
-                                                 self.data[pos:size])
-                if found:
-                    self._frames.append(frame)
-                    pos += found
-                else:
-                    break
-            else:
-                break
-        if found and found > self.read_size:
+            class_name = "ID3v2_ID_{}".format(name)
+            frame_class = getattr(id3v2_frames, class_name, None)
+            if None == frame_class:
+                frame_class = id3v2_frames.ID3v2_ID_Generic
+            frame = frame_class(version=self.version, data=self.data[pos:])
+            self._frames.append(frame)
+            pos += frame.read_size
+        if pos > self.read_size:
             raise ValueError("ID3v2 tag had more headers than it reported.")
         #respect the reported size, if possible - the rest is padding.
         return self.read_size
@@ -168,7 +138,7 @@ class ID3v2x():
             name = bytes(self.data[pos:pos+3]).decode('latin-1')
             version = self.data[pos + 4]
             subversion = self.data[pos + 5]
-            size = self._read_size_unsynch(pos + 6, 4)
+            size = id3v2common.read_syncsafe(pos + 6, self.data)
             if '3DI' != name or self.version != version or \
             self.subversion != subversion or self.read_size != size:
                 if config.OPTS.verbosity >= 2:
