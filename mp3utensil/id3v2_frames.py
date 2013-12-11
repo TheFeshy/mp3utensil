@@ -2,6 +2,7 @@
 """This module implements all of the ID3v2.x frames"""
 
 import zlib
+from codecs import BOM_UTF16_BE
 
 import id3v2common
 
@@ -225,7 +226,7 @@ class ID3v2_ID_Generic_Text(ID3v2_ID_Generic):
                 data += self.data.encode(id3v2common.text_encoding[1])
         else:
             data += bytes([3,])
-            data = self.data.encode('utf-8')
+            data = self.data.encode(id3v2common.text_encoding[3])
         buf = self._header_bytes(len(data) + 1)#1 extra byte for encode type
         buf += self._data_bytes(data)
         return buf

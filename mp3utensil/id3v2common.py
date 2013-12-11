@@ -2,7 +2,7 @@
 """This module contains functions that are used both by the ID3v2 tag and
    the frames it contains, as well as some general ID3v2  informatin."""
    
-text_encoding={0:'latin-1',1:'utf-16',2:'utf-16_be',3:'utf-8'}
+text_encoding={0:'latin-1',1:'utf-16',2:'utf-16-be',3:'utf-8'}
    
 def read_syncsafe(pos, data, count=4):
     """Reads a sync-safed integer of arbitrary size"""
