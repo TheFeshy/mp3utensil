@@ -4,12 +4,20 @@
    directory.  It is used for unittest validation."""
 
 import unittest
- 
-from test_mp3header import Test_MP3Header  # @UnresolvedImport
-from test_mp3framelist import Test_MP3FrameList  # @UnresolvedImport
-from test_mp3file import Test_MP3File  # @UnresolvedImport
-from test_pythonrecordarray import Test_PythonRecordArray #@UnresolvedImport
-from test_id3 import Test_ID3 #@UnresolvedImport
+
+try: 
+    from test_mp3header import Test_MP3Header  # @UnresolvedImport
+    from test_mp3framelist import Test_MP3FrameList  # @UnresolvedImport
+    from test_mp3file import Test_MP3File  # @UnresolvedImport
+    from test_pythonrecordarray import Test_PythonRecordArray #@UnresolvedImport
+    from test_id3 import Test_ID3 #@UnresolvedImport
+except:
+    from tests.test_mp3header import Test_MP3Header  # @UnresolvedImport
+    from tests.test_mp3framelist import Test_MP3FrameList  # @UnresolvedImport
+    from tests.test_mp3file import Test_MP3File  # @UnresolvedImport
+    from tests.test_pythonrecordarray import Test_PythonRecordArray #@UnresolvedImport
+    from tests.test_id3 import Test_ID3 #@UnresolvedImport
+    
 
 def build_test_suites(cases=None):
     """Builds three suites of tests, one for all the short tests, medium 

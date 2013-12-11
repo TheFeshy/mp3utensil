@@ -123,8 +123,11 @@ class ID3v2x():
             name = bytes(self.data[pos:pos+id_size]).decode('latin-1')
             class_name = "ID3v2_ID_{}".format(name)
             frame_class = getattr(id3v2_frames, class_name, None)
-            if None == frame_class:
-                frame_class = id3v2_frames.ID3v2_ID_Generic
+            if None == frame_class: #We don't have a specific class,use generic
+                if 'T' == name[0:1]:
+                    frame_class = id3v2_frames.ID3v2_ID_Generic_Text
+                else:
+                    frame_class = id3v2_frames.ID3v2_ID_Generic
             frame = frame_class(version=self.version, data=self.data[pos:])
             self._frames.append(frame)
             pos += frame.read_size

@@ -7,7 +7,11 @@ import array
 import config
 import mp3file
 import id3
-from sample_file_maker import SampleMP3File #@UnresolvedImport
+
+try:
+    from sample_file_maker import SampleMP3File #@UnresolvedImport
+except ImportError:
+    from tests.sample_file_maker import SampleMP3File #@UnresolvedImport
 
 #pylint: disable=too-many-public-methods
 #above is a side-effect of using decorators.

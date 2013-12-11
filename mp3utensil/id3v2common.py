@@ -2,6 +2,8 @@
 """This module contains functions that are used both by the ID3v2 tag and
    the frames it contains, as well as some general ID3v2  informatin."""
    
+text_encoding={0:'latin-1',1:'utf-16',2:'utf-16_be',3:'utf-8'}
+   
 def read_syncsafe(pos, data, count=4):
     """Reads a sync-safed integer of arbitrary size"""
     return _read_various(pos, data, count, 7)
@@ -36,9 +38,9 @@ def _write_various(data, max_bytes=4, shift=8):
     """Used to write syncsafe or normal multibyte ints from ID3v2 files."""
     mask = 255
     mask = (mask >> (8 - shift))
-    buf = bytearray()
-    for _ in range(max_bytes):
-        buf.append(data & mask)
+    buf = bytearray([0] * max_bytes)
+    for offset in range(max_bytes):
+        buf[max_bytes - (1+offset)] = data & mask
         data = data >> shift
     if data:
         raise ValueError("Id3v2 Frame data exceeded allowed limits")

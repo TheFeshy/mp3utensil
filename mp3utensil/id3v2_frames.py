@@ -45,7 +45,7 @@ class ID3v2_ID_Generic():
             frame_size_size = 4
         if self.version == 4:
             size_reader = id3v2common.read_syncsafe
-        self.name = bytes(data[:name_size])
+        self.name = bytes(data[:name_size]).decode("latin-1")
         self.read_size = size_reader(name_size, data, frame_size_size)
         flags_start = name_size + frame_size_size
         data_start = flags_start
@@ -114,7 +114,7 @@ class ID3v2_ID_Generic():
             raise ValueError("Encrypted tags are currently not supported.")
         self.read_size = self.read_size + flags_start #include header in read
         
-    def _header_bytes(self):
+    def _header_bytes(self, data_size=None):
         """Converts the header part to a string of bytes.  Used by this class
            and any derived classes for their __bytes__method."""
         write_size = 3
@@ -125,12 +125,14 @@ class ID3v2_ID_Generic():
             int_write_type = id3v2common.write_syncsafe
         try:
             name = self.name.encode('latin-1') #pylint:disable=no-member
-        except TypeError: #If we can't encode it, it is likely already bytes.
+        except AttributeError: #If we can't encode it, it is likely already bytes.
             name = self.name
         if len(name) != write_size:
-            raise Exception("ID3v2 tag has wrong size name")
+            raise ValueError("ID3v2 tag has wrong size name")
         buf = name
-        buf += int_write_type(self.data, write_size)
+        if None == data_size:
+            data_size = len(self.data)
+        buf += int_write_type(data_size, write_size)
         #version 2 has no flags
         if self.version == 3:
             flags = self.tag_alter_discard << 7
@@ -166,20 +168,22 @@ class ID3v2_ID_Generic():
                 buf += int_write_type(len(self.data), write_size)
         return buf
                 
-            
+    def _data_bytes(self, data):
+        """Takes byte-ified data, and applies any transformations that are
+           needed for storage.""" 
+        if self.unsync_flag:
+            raise ValueError("not yet supported") #TODO implement
+        if self.compressed_flag:
+            data = bytes(zlib.compress(data))
+        if self.encrypted_flag:
+            raise ValueError("not yet supported") #TODO implement
+        return data       
         
     def __bytes__(self):
         """Returns a bytearray object containing the binary representation of this
            frame to be stored in an mp3 file."""
         buf = self._header_bytes()
-        data = self.data
-        if self.unsync_flag:
-            raise ValueError("not yet supported") #TODO implement
-        if self.compressed_flag:
-            data = zlib.compress(data)
-        if self.encrypted_flag:
-            raise ValueError("not yet supported") #TODO implement
-        buf += data
+        buf += self._data_bytes(self.data)
         return buf
     
     def __repr__(self):
@@ -198,3 +202,34 @@ class ID3v2_ID_Generic():
             rep += "group {} ".format(self.group)
         rep += "| {}".format(self.data)
         return rep
+    
+class ID3v2_ID_Generic_Text(ID3v2_ID_Generic):
+    def __init__(self, version, data=None):
+        super().__init__(version, data)
+        if self.data:
+            self.parse_string_from_data()
+            
+    def parse_string_from_data(self):
+        encoding = id3v2common.text_encoding[self.data[0]]
+        self.data = self.data[1:].decode(encoding)
+        
+    def __bytes__(self):
+        data = bytearray()
+        if self.version == 2:
+            try:
+                temp = self.data.encode(id3v2common.text_encoding[0])
+                data += bytes([0,])
+                data += temp
+            except UnicodeError:
+                data += bytes([1,])
+                data += self.data.encode(id3v2common.text_encoding[1])
+        else:
+            data += bytes([3,])
+            data = self.data.encode('utf-8')
+        buf = self._header_bytes(len(data) + 1)#1 extra byte for encode type
+        buf += self._data_bytes(data)
+        return buf
+        
+if __name__ == '__main__':
+    import tests.test_id3v2_frames
+    tests.test_id3v2_frames.test_me()

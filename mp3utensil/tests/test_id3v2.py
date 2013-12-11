@@ -11,6 +11,8 @@ from sample_file_maker import SampleMP3File #@UnresolvedImport
 #pylint: disable=too-many-public-methods
 #above is a side-effect of using decorators.
 class Test_ID3v2x(unittest.TestCase):
+    def test_short_01_init(self):
+        pass
     pass
 
 def test_me():

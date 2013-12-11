@@ -5,9 +5,12 @@
 import unittest
 import random
 
-from sample_file_maker import SampleMP3File #@UnresolvedImport
 import mp3file
 import config
+try:
+    from sample_file_maker import SampleMP3File #@UnresolvedImport
+except:
+    from tests.sample_file_maker import SampleMP3File #@UnresolvedImport
 
 #pylint: disable=too-many-public-methods
 #above is a side-effect of using decorators.
