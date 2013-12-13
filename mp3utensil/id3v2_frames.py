@@ -50,6 +50,7 @@ class ID3v2_ID_Generic():
         self.read_size = size_reader(name_size, data, frame_size_size)
         flags_start = name_size + frame_size_size
         data_start = flags_start
+        flags_end = flags_start
         #Version 2.2 has no flags to read, nor extended header info.
         if self.version == 3:
             data_start += 2 #two bytes of flags
@@ -63,6 +64,7 @@ class ID3v2_ID_Generic():
             self.compressed_flag = bool(bits & 128)
             self.encrypted_flag = bool(bits & 64)
             self.group_flag = bool(bits & 32)
+            flags_end += 2
             if bits & 31:
                 raise Exception("Frame contains unknown flags which alter its header_size")
             if self.compressed_flag:
@@ -88,6 +90,7 @@ class ID3v2_ID_Generic():
             self.encrypted_flag = bool(bits & 4)
             self.unsync_flag = bool(bits & 2)
             self.data_length_flag = bool(bits & 1)
+            flags_end += 2
             if bits & 79:
                 raise Exception("Frame contains unknown flags which alter its header_size")
             if self.group_flag:
@@ -102,7 +105,7 @@ class ID3v2_ID_Generic():
                 data_start += 4
         #Now we can read the data.  We're all done with header info now, so
         #discard that 'data' block for a copy of the frame's internal data.
-        self.data = bytes(data[data_start:flags_start + self.read_size])
+        self.data = bytes(data[data_start:flags_end + self.read_size])
         if self.unsync_flag:
             raise ValueError("Unsynced tags are currently not supported")
         if self.compressed_flag:
@@ -139,11 +142,11 @@ class ID3v2_ID_Generic():
             flags = self.tag_alter_discard << 7
             flags &= self.file_alter_discard << 6
             flags &= self.read_only << 5
-            buf += flags
+            buf += bytes([flags,])
             flags = self.compressed_flag << 7
             flags &= self.encrypted_flag << 6
             flags &= self.group_flag << 5
-            buf += flags
+            buf += bytes([flags,])
             if self.compressed_flag:
                 buf += int_write_type(len(self.data), write_size)
             if self.encrypted_flag:
@@ -154,13 +157,13 @@ class ID3v2_ID_Generic():
             flags = self.tag_alter_discard << 6
             flags &= self.file_alter_discard << 5
             flags &= self.read_only << 4
-            buf += flags
+            buf += bytes([flags,])
             flags = self.group_flag << 6
             flags &= self.compressed_flag << 3
             flags &= self.encrypted_flag << 2
             flags &= self.unsync_flag << 1
             flags &= self.data_length_flag
-            buf += flags
+            buf += bytes([flags,])
             if self.group_flag:
                 buf += id3v2common.write_normal(self.group, 1)
             if self.encrypted_flag:
@@ -207,27 +210,31 @@ class ID3v2_ID_Generic():
 class ID3v2_ID_Generic_Text(ID3v2_ID_Generic):
     def __init__(self, version, data=None):
         super().__init__(version, data)
+        if self.version < 4:
+            self.text_encoding=id3v2common.text_encoding[0] #latin-1
+        else:
+            self.text_encoding=id3v2common.text_encoding[3] #utf-8
         if self.data:
             self.parse_string_from_data()
             
     def parse_string_from_data(self):
-        encoding = id3v2common.text_encoding[self.data[0]]
-        self.data = self.data[1:].decode(encoding)
+        self.text_encoding = id3v2common.text_encoding[self.data[0]]
+        self.data = self.data[1:].decode(self.text_encoding)
         
     def __bytes__(self):
         data = bytearray()
-        if self.version == 2:
-            try:
-                temp = self.data.encode(id3v2common.text_encoding[0])
-                data += bytes([0,])
-                data += temp
-            except UnicodeError:
-                data += bytes([1,])
-                data += self.data.encode(id3v2common.text_encoding[1])
-        else:
-            data += bytes([3,])
-            data = self.data.encode(id3v2common.text_encoding[3])
-        buf = self._header_bytes(len(data) + 1)#1 extra byte for encode type
+        fallback_encoding = id3v2common.text_encoding[1]
+        if self.version == 4:
+            fallback_encoding = id3v2common.text_encoding[3]
+        try:
+            temp = self.data.encode(self.text_encoding)
+            enc = id3v2common.REVERSE_TEXT_ENCODING[self.text_encoding]
+        except UnicodeError:
+            temp = self.data.encode(fallback_encoding)
+            enc = id3v2common.REVERSE_TEXT_ENCODING[fallback_encoding]
+        data += bytes([enc,])
+        data += temp
+        buf = self._header_bytes(len(data))
         buf += self._data_bytes(data)
         return buf
         

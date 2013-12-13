@@ -11,12 +11,16 @@ try:
     from test_mp3file import Test_MP3File  # @UnresolvedImport
     from test_pythonrecordarray import Test_PythonRecordArray #@UnresolvedImport
     from test_id3 import Test_ID3 #@UnresolvedImport
+    from test_id3v2common import Test_ID3v2Common #@UnresolvedImport
+    from test_id3v2_frames import Test_ID3v2xFrames #@UnresolvedImport
 except:
     from tests.test_mp3header import Test_MP3Header  # @UnresolvedImport
     from tests.test_mp3framelist import Test_MP3FrameList  # @UnresolvedImport
     from tests.test_mp3file import Test_MP3File  # @UnresolvedImport
     from tests.test_pythonrecordarray import Test_PythonRecordArray #@UnresolvedImport
     from tests.test_id3 import Test_ID3 #@UnresolvedImport
+    from tests.test_id3v2common import Test_ID3v2Common #@UnresolvedImport
+    from tests.test_id3v2_frames import Test_ID3v2xFrames #@UnresolvedImport
     
 
 def build_test_suites(cases=None):
@@ -28,7 +32,9 @@ def build_test_suites(cases=None):
                       Test_MP3Header, 
                       Test_MP3FrameList, 
                       Test_MP3File,
-                      Test_ID3]
+                      Test_ID3,
+                      Test_ID3v2Common,
+                      Test_ID3v2xFrames]
     else:
         test_cases = cases
     test_types = ['short', 'medium', 'long']

@@ -3,6 +3,7 @@
    the frames it contains, as well as some general ID3v2  informatin."""
    
 text_encoding={0:'latin-1',1:'utf-16',2:'utf-16-be',3:'utf-8'}
+REVERSE_TEXT_ENCODING={v: k for k, v in text_encoding.items()} #reversed
    
 def read_syncsafe(pos, data, count=4):
     """Reads a sync-safed integer of arbitrary size"""
@@ -45,3 +46,25 @@ def _write_various(data, max_bytes=4, shift=8):
     if data:
         raise ValueError("Id3v2 Frame data exceeded allowed limits")
     return buf
+
+def syncsafe_data(data):
+    data = bytearray(data)
+    for index in range(len(data)-1):
+        if 255 == data[index]:
+            if 0 == data[index+1] or 224 <= data[index+1]:
+                data.insert(index, 0)
+    return data
+
+def un_syncsafe_data(data):
+    slices = []
+    last_index = 0
+    size = len(data)
+    while last_index >= 0 and last_index < size:
+        index = data.find(255, last_index, -1)
+        if index >= 0 and data[index+1] == 0:
+            slices.append(data[last_index:index])
+            last_index = index +1 #skip zero byte
+        elif index < 0:
+            slices.append(data[last_index:])
+    return bytearray().join(slices)
+                
