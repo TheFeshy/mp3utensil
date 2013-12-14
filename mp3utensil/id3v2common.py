@@ -52,19 +52,27 @@ def syncsafe_data(data):
     for index in range(len(data)-1):
         if 255 == data[index]:
             if 0 == data[index+1] or 224 <= data[index+1]:
-                data.insert(index, 0)
+                data.insert(index+1, 0)
     return data
 
 def un_syncsafe_data(data):
     slices = []
-    last_index = 0
+    prev_index = 0
+    index = 0
     size = len(data)
-    while last_index >= 0 and last_index < size:
-        index = data.find(255, last_index, -1)
-        if index >= 0 and data[index+1] == 0:
-            slices.append(data[last_index:index])
-            last_index = index +1 #skip zero byte
+    while index >= 0 and index < size:
+        index = data.find(255, index, -1)
+        if index >= 0:
+            if data[index+1] == 0:
+                slices.append(data[prev_index:index+1])
+                prev_index = index + 2 #skip zero byte
+            index += 1
         elif index < 0:
-            slices.append(data[last_index:])
-    return bytearray().join(slices)
+            slices.append(data[prev_index:])
+            break
+    return bytes().join(slices)
+
+if __name__ == '__main__':
+    import tests.test_id3v2common
+    tests.test_id3v2common.test_me()
                 

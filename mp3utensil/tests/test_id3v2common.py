@@ -21,6 +21,18 @@ class Test_ID3v2Common(unittest.TestCase):
         self.assertEqual(id3v2common.write_syncsafe(511, 2), bytes([3,127]), "failed to convert an int to syncsafed bytes")
         self.assertRaises(ValueError, id3v2common.write_syncsafe, 511, 1)
         
+    def test_short_03_syncsafe(self):
+        testval = bytearray((82,82,85,90,45,255,224,100))
+        testval2 = bytearray((82,82,85,90,45,255,24,100))
+        testval3 = bytearray((82,82,85,90,255,0,119))
+        compareval = bytearray((82,82,85,90,45,255,0,224,100))
+        compareval3 = bytearray((82,82,85,90,255,0,0,119))
+        self.assertEqual(compareval, id3v2common.syncsafe_data(testval), "Does't syncsafe data with false sync")
+        self.assertEqual(testval, id3v2common.un_syncsafe_data(compareval), "failed to unsync data with false sync")
+        self.assertEqual(testval2, id3v2common.syncsafe_data(testval2), "mangled data without sync bit")
+        self.assertEqual(compareval3, id3v2common.syncsafe_data(testval3), "Didn't syncsafe zeros as required")
+        self.assertEqual(testval3, id3v2common.un_syncsafe_data(compareval3), "Didn't unsyncsafe zeros as required")
+        
     
 def test_me():
     """Runs unit tests for the associated module"""
