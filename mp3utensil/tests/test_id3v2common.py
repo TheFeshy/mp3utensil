@@ -25,13 +25,17 @@ class Test_ID3v2Common(unittest.TestCase):
         testval = bytearray((82,82,85,90,45,255,224,100))
         testval2 = bytearray((82,82,85,90,45,255,24,100))
         testval3 = bytearray((82,82,85,90,255,0,119))
+        testval4 = bytearray((70,71,72,255,255,73,74,255,0,75))
         compareval = bytearray((82,82,85,90,45,255,0,224,100))
         compareval3 = bytearray((82,82,85,90,255,0,0,119))
+        compareval4 = bytearray((70,71,72,255,0,255,73,74,255,0,0,75))
         self.assertEqual(compareval, id3v2common.syncsafe_data(testval), "Does't syncsafe data with false sync")
         self.assertEqual(testval, id3v2common.un_syncsafe_data(compareval), "failed to unsync data with false sync")
         self.assertEqual(testval2, id3v2common.syncsafe_data(testval2), "mangled data without sync bit")
         self.assertEqual(compareval3, id3v2common.syncsafe_data(testval3), "Didn't syncsafe zeros as required")
         self.assertEqual(testval3, id3v2common.un_syncsafe_data(compareval3), "Didn't unsyncsafe zeros as required")
+        self.assertEqual(compareval4, id3v2common.syncsafe_data(testval4), "Didn't handle multiple bytes needing syncsafing")
+        self.assertEqual(testval4, id3v2common.un_syncsafe_data(compareval4), "Didn't handle multiple bytes needing un-syncsafing")
         
     
 def test_me():
