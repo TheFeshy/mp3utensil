@@ -1,7 +1,7 @@
-# pylint: disable=trailing-whitespace, old-style-class
+# pylint: disable=old-style-class
 """This module contains the methods and classes necessary to identify and
    represent ID3 tags."""
-   
+
 import config
 
 # pylint: disable=too-few-public-methods
@@ -11,10 +11,10 @@ class ID3v1x():
     HEURISTIC = {0:(29,59,89,123),
                   1:(29,59,89,121)}
     HEURISTIC_MIN = 5
-    _FIELDS = ({'title':(3,30), 'artist':(33,30), 'album':(63,30), 
+    _FIELDS = ({'title':(3,30), 'artist':(33,30), 'album':(63,30),
                 'year':(93,4), 'comment':(97,30), 'genre':(127,1)},
-               {'title':(3,30), 'artist':(33,30), 'album':(63,30), 
-                'year':(93,4), 'comment':(97,28), 'track':(125,2), 
+               {'title':(3,30), 'artist':(33,30), 'album':(63,30),
+                'year':(93,4), 'comment':(97,28), 'track':(125,2),
                 'genre':(127,1)})
     def __init__(self, data=None, **kwargs):
         """ignore keyword args; these are here because a common way to create
@@ -32,7 +32,7 @@ class ID3v1x():
         if config.OPTS.verbosity >= 3 and None != self.position:
             print("Identified ID3v1.{} tag at {}".format(
                     self.subversion, self.position))
-            
+
     def __getattr__(self, index):
         """This should enable tag.title style syntax"""
         if index in ID3v1x._FIELDS[1].keys():
@@ -46,7 +46,7 @@ class ID3v1x():
             return field.rstrip().decode('latin-1')
         else:
             return self.__dict__[index]
-    
+
     def __setattr__(self, index, value):
         """allow us to use convenient tag.title = "something" syntax"""
         if index in ID3v1x._FIELDS[1].keys():
@@ -75,7 +75,7 @@ class ID3v1x():
                 self.data[end+position] = 0
         else:
             object.__setattr__(self, index, value)
-    
+
 def heuristic_verify(data):
     """Since the normal way to verify ID3 tags is to find them where you
        expect them, and the whole point of this parser is to handle badly
@@ -83,11 +83,11 @@ def heuristic_verify(data):
        The only way is by the sheer uselessness of the ID3v1 standard:
        most of the tag will be empty padding.  We'll use the amount of
        padding on the end as HEURISTIC to verify the tag.
-       
+
        We could improve this by checking that the majority of characters
        in the beginning are ascii as well, though I am uncertain if ID3v1
        supported UTF-8 (most likely not.)
-       
+
        This should only check for null characters, but some brain-dead
        taggers use spaces instead."""
     if config.OPTS.no_id31_heuristics:
@@ -117,5 +117,5 @@ def find_and_identify_v1_tags(bin_slice):
             block = chunk[i:i+128]
             if heuristic_verify(block):
                 return bin_slice.carve_out(ID3v1x, i, i+128)
-    return None, [bin_slice,] 
+    return None, [bin_slice,]
                 

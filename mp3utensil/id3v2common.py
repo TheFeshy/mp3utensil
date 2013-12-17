@@ -1,10 +1,10 @@
-# pylint: disable=trailing-whitespace, old-style-class
+# pylint: disable=old-style-class
 """This module contains functions that are used both by the ID3v2 tag and
    the frames it contains, as well as some general ID3v2  informatin."""
-   
+
 text_encoding={0:'latin-1',1:'utf-16',2:'utf-16-be',3:'utf-8'}
 REVERSE_TEXT_ENCODING={v: k for k, v in text_encoding.items()} #reversed
-   
+
 def read_syncsafe(pos, data, count=4):
     """Reads a sync-safed integer of arbitrary size"""
     return _read_various(pos, data, count, 7)
@@ -26,14 +26,14 @@ def _read_various(pos, data, count, shift=8):
     for offset in range(count):
         value += (data[pos+offset] << (((count - offset)-1) * shift))
     return value
-    
+
 def write_syncsafe(data, max_bytes=4):
     """Writes a syncsafed integer to a bytearray and returns it"""
     return _write_various(data, max_bytes, 7)
 
 def write_normal(data, max_bytes=4):
     """Writes a non-syncsafed integer to a bytearray and returns it"""
-    return _write_various(data, max_bytes, 8)    
+    return _write_various(data, max_bytes, 8)
 
 def _write_various(data, max_bytes=4, shift=8):
     """Used to write syncsafe or normal multibyte ints from ID3v2 files."""

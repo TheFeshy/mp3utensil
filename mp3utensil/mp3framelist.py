@@ -1,4 +1,4 @@
-# pylint: disable=trailing-whitespace, old-style-class
+# pylint: disable=old-style-class
 # pylint: disable=no-member
 # no-member because pylit isn't handling numpy imports properly.
 """ Used for storing and interpreting individual frames in an mp3 file. """
@@ -6,7 +6,7 @@ import mp3header
 import config
 
 class MP3FrameList():
-    """Encapsulates and provides methods to work with individual mp3 frames."""    
+    """Encapsulates and provides methods to work with individual mp3 frames."""
     if config.OPTS.use_numpy:
         import numpy as np
         _INIT = np.zeros
@@ -19,22 +19,22 @@ class MP3FrameList():
         _FRAMETYPE = [('header','L'),
                       ('position','L'),
                       ('length','H')]
-    
+
     def __init__(self, file_size=0):
         #max framesize=2880, min framesize=24, ebook=208, music=576
         approximate_frame_size = 300
         quarantine_size = config.OPTS.consecutive_frames_to_id * 3
         #This will yield about 10 chunks for a file with "average" frame length
-        self._chunksize = file_size // (approximate_frame_size * 10) 
+        self._chunksize = file_size // (approximate_frame_size * 10)
         self._chunksize = max(self._chunksize, 10000) #avoid pathological cases
         self._next_frame = 0
         self._current_chunk = 0
-        self._chunks = [MP3FrameList._INIT(self._chunksize, 
+        self._chunks = [MP3FrameList._INIT(self._chunksize,
                         dtype=MP3FrameList._FRAMETYPE)]
-        self._quarantine = MP3FrameList._INIT(quarantine_size, 
+        self._quarantine = MP3FrameList._INIT(quarantine_size,
                                     dtype=MP3FrameList._FRAMETYPE)
         self._next_quarantine_frame = 0
-        
+
     def append_frame(self, frame_data, quarantine=False):
         """Appends a new frame and its associated info to the frame list."""
         if quarantine:
@@ -42,7 +42,7 @@ class MP3FrameList():
             self._next_quarantine_frame += 1
         else:
             if self._next_frame >= self._chunksize: #chunk's full, add another
-                self._chunks.append(MP3FrameList._INIT(self._chunksize, 
+                self._chunks.append(MP3FrameList._INIT(self._chunksize,
                                     dtype=MP3FrameList._FRAMETYPE))
                 self._next_frame = 0
                 self._current_chunk += 1
@@ -50,8 +50,8 @@ class MP3FrameList():
             self._next_frame += 1
 
 #pylint:disable=too-many-locals
-#locals used for speed because this is an inner-loop function        
-    def conditional_append_frame(self, header_struct, position, 
+#locals used for speed because this is an inner-loop function
+    def conditional_append_frame(self, header_struct, position,
                                  quarantine=False):
         """Adds a frame to the list if it is valid.  Returns None if invalid,
            or frame size if valid.  quarantine means that the frame will be
@@ -81,49 +81,48 @@ class MP3FrameList():
         #Finally, add it to our array and report success
         self.append_frame((header_struct.d, position, framesize), quarantine)
         return framesize
-#pylint:enable=too-many-locals    
-    
+#pylint:enable=too-many-locals
+
     def discard_quarantine(self):
         """Invalidate potential frames in quarantine"""
         self._next_quarantine_frame = 0
-        
+
     def accept_quarantine(self):
         """Move frames from quarantine to our accepted frames list"""
         for i in range(self._next_quarantine_frame):
             self.append_frame(self._quarantine[i], False)
         self._next_quarantine_frame = 0
-        
-        
+
     def verify_crc(self):
         """Verifies that the crc value for the frame is correct."""
         #TODO: verify frame crc check
         #TODO: decide how to differentiate between no crc and crc failed
         pass
-    
+
     def get_bit_reservoir(self):
         """Returns the offset reported by the bit reservoir, which indicates
            a distance into previous frames which contain the rest of this
            frame's data."""
         #TODO: read bit reservoir
-        pass 
-    
+        pass
+
     def __iter__(self):
         """Iterator that iterates over all frames in list, transparently
            Moving from one chucnk to the next."""
         for chunk in self._chunks[:-1]:
             for frame in chunk:
-                yield frame 
+                yield frame
         chunk = self._chunks[-1]
         for i in range(self._next_frame):
-            yield chunk[i]  
-            
-    def __len__(self): 
+            yield chunk[i]
+
+    def __len__(self):
         length = 0
         for chunk in self._chunks[:-1]:
             length += len(chunk)
         length += self._next_frame
-        return length 
-    
+        return length
+
     def __getitem__(self, index):
         chunk = 0
         size = len(self._chunks[0])
@@ -131,5 +130,5 @@ class MP3FrameList():
             index -= size
             chunk += 1
             size = len(self._chunks[chunk])
-        return self._chunks[chunk][index]                    
+        return self._chunks[chunk][index]
                     

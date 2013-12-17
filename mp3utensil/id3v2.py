@@ -1,17 +1,17 @@
-# pylint: disable=trailing-whitespace, old-style-class
+# pylint: disable=old-style-class
 """This module contains the methods and classes necessary to identify and
    represent ID3v2 tags."""
-   
+
 import config
-import id3v2_frames   
-import id3v2common 
+import id3v2_frames
+import id3v2common
 
 # pylint: disable=too-few-public-methods
 class ID3v2x():
-    """A class representing an ID3v2.x tag.  Currently handles version 
+    """A class representing an ID3v2.x tag.  Currently handles version
     ID3v2.2, ID3v2.3, and ID3v2.4"""
     def __init__(self, data=None, position=None, **kwargs):
-           
+
         #Initialize with defaults (v2 options)
         self.data = data
         self.position = position
@@ -39,7 +39,7 @@ class ID3v2x():
         if position:
             self.read_position = position
         self.read_size = None
-        
+
         #If we are reading from a file, construct the class from the data read
         if None != data and None != position:
             if position < 0 or position > len(data):
@@ -51,7 +51,7 @@ class ID3v2x():
             #TODO: handle crc processing for v3 &4 here
             position = self._read_frames(position)
             position = self._read_footer(position)
-                
+
     def _read_flags(self, pos):
         """Reads the flags and other bits of the ID3v2 header."""
         #All versions
@@ -71,7 +71,7 @@ class ID3v2x():
             self.footer_flag = bool(flag_bits & 16)
             self.read_size += 10
         return pos + 10 #Header is always 10 bytes
-    
+
     def _read_extended_header(self, pos):
         """Reads the extended header, if present.  The extended header has
            some of the most differences between versions."""
@@ -107,7 +107,7 @@ class ID3v2x():
                 self.restrictions = self.data[pos + offset]
                 offset += 1
             return self.extended_size #in v4 size includes header
-        
+
     def _read_frames(self, pos):
         """Reads frames until it runs out of data or finds empty frames."""
         size = self.read_size
@@ -135,7 +135,7 @@ class ID3v2x():
             raise ValueError("ID3v2 tag had more headers than it reported.")
         #respect the reported size, if possible - the rest is padding.
         return self.read_size
-    
+
     def _read_footer(self, pos):
         if self.version == 4:
             name = bytes(self.data[pos:pos+3]).decode('latin-1')
@@ -147,7 +147,7 @@ class ID3v2x():
                 if config.OPTS.verbosity >= 2:
                     print("ID3v2 footer values do not match header.")
             self.read_position += 10
-            
+
     def __repr__(self):
         rep = "ID3v{}.{} ({} bytes) | ".format(self.version, self.subversion, len(self.data))
         if self.unsynch_flag:
@@ -161,7 +161,7 @@ class ID3v2x():
         rep += "| "
         for frame in self._frames:
             rep += " -> {}".format(frame.__repr__())
-        return rep            
+        return rep
 
 def find_and_identify_v2_tags(bin_slice):
     """takes the offset and slice of previously identified "junk" data

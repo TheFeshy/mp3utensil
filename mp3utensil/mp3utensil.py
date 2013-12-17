@@ -1,4 +1,4 @@
-# pylint: disable=trailing-whitespace,old-style-class
+# pylint: disable=old-style-class
 """This is the main module of the mp3utensil app.  Call it with
    mp3utensil --help
    for options."""
@@ -15,7 +15,7 @@ def conditional_memory_profile(func):
         return profile(func)
     else:
         return func
-    
+
 def conditional_cpu_profile(sort, max_rows):
     """Enables CPU time profiling if set in the command line options."""
     def profile_decorator(func):
@@ -34,13 +34,13 @@ def conditional_cpu_profile(sort, max_rows):
             stats = pstats.Stats(profiler, stream=text).sort_stats(sort)
             stats.print_stats(max_rows)
             print(text.getvalue())
-            return wrap_func           
+            return wrap_func
         if config.OPTS.profile_cpu:
             return wrapped
         else:
             return func
     return profile_decorator
-    
+
 @conditional_cpu_profile(sort='tottime', max_rows=10)
 @conditional_memory_profile
 def main():
@@ -54,6 +54,6 @@ def main():
     for file in config.OPTS.files:
         mfile = mp3file.MP3File(file)
         mfile.scan_file()
-         
+
 if __name__ == '__main__':
     main()

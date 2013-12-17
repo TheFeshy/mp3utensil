@@ -1,4 +1,4 @@
-# pylint: disable=trailing-whitespace, import-error, invalid-name
+# pylint: disable=import-error, invalid-name
 # pylint: disable=protected-access, line-too-long
 '''Test Module for id3v2common'''
 
@@ -15,12 +15,12 @@ class Test_ID3v2Common(unittest.TestCase):
         self.assertEqual(id3v2common.read_syncsafe(0, testdata, 2),511, "Failed to read syncsafed int")
         testdata = bytes([9,255])
         self.assertRaises(ValueError, id3v2common.read_syncsafe, 0, testdata, 2)
-        
+
     def test_short_02_write(self):
         self.assertEqual(id3v2common.write_normal(511, 2), bytes([1,255]), "failed to convert an int to non-syncsafed bytes")
         self.assertEqual(id3v2common.write_syncsafe(511, 2), bytes([3,127]), "failed to convert an int to syncsafed bytes")
         self.assertRaises(ValueError, id3v2common.write_syncsafe, 511, 1)
-        
+
     def test_short_03_syncsafe(self):
         testval = bytearray((82,82,85,90,45,255,224,100))
         testval2 = bytearray((82,82,85,90,45,255,24,100))
@@ -36,8 +36,7 @@ class Test_ID3v2Common(unittest.TestCase):
         self.assertEqual(testval3, id3v2common.un_syncsafe_data(compareval3), "Didn't unsyncsafe zeros as required")
         self.assertEqual(compareval4, id3v2common.syncsafe_data(testval4), "Didn't handle multiple bytes needing syncsafing")
         self.assertEqual(testval4, id3v2common.un_syncsafe_data(compareval4), "Didn't handle multiple bytes needing un-syncsafing")
-        
-    
+
 def test_me():
     """Runs unit tests for the associated module"""
     try:
@@ -45,7 +44,6 @@ def test_me():
     except ImportError:
         import tests.test_all as test_all
     test_all.run_tests([Test_ID3v2Common])
-    
-    
+
 if __name__ == '__main__':
     test_me()

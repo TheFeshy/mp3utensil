@@ -1,4 +1,4 @@
-# pylint: disable=trailing-whitespace, import-error, invalid-name
+# pylint: disable=import-error, invalid-name
 # pylint: disable=protected-access, line-too-long
 '''Test Module for id3 module'''
 
@@ -19,6 +19,7 @@ def test_me():
     """Runs unit tests for the associated module"""
     import test_all #@UnresolvedImport
     test_all.run_tests([Test_ID3v2x])
-    
+
 if __name__ == '__main__':
     test_me()
+    

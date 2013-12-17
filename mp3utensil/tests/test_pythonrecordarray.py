@@ -1,4 +1,4 @@
-# pylint: disable=trailing-whitespace, import-error, invalid-name
+# pylint: disable=import-error, invalid-name
 # pylint: disable=no-member, too-many-public-methods
 '''Test Module for pythonrecordarray module'''
 
@@ -7,7 +7,7 @@ import pythonrecordarray
 
 class Test_PythonRecordArray(unittest.TestCase):
     """Test class for PythonRecordArray"""
-    
+
     def test_short_01_init_and_access(self):
         """Currently tests everything in this class."""
         typedef = [("recordone",'H'),

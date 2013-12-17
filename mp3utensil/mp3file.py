@@ -1,4 +1,4 @@
-# pylint: disable=trailing-whitespace, old-style-class
+# pylint: disable=old-style-class
 # pylint: disable=no-member
 """This module is for interacting with a given mp3 file.
 
@@ -32,7 +32,7 @@ class MP3File():
         else:
             self._array_type = PythonArrays
         self.byte_array = None
-        
+
     def scan_file(self):
         """Identifies valid mp3 frames in a file, and separates out anything
            that isn't a valid mp3 frame as 'data'."""
@@ -40,10 +40,10 @@ class MP3File():
             self.scan_file_python_or_numpy(file)
         self.scan_non_frame_data([id3v2.find_and_identify_v2_tags,
                                   id3.find_and_identify_v1_tags])
-            
+
     def scan_non_frame_data(self,identify_functions):
         """Scans each binary slice we identified, using a list of functions
-           to match each type of metadata.""" 
+           to match each type of metadata."""
         matched = []
         unmatched = []
         for bin_slice in self.other:
@@ -52,16 +52,14 @@ class MP3File():
                 matched += hit
             unmatched += miss
         self.other = matched + unmatched
-        
-                    
-    
+
     def scan_file_python_or_numpy(self, file):
         """Python and numpy implementation of the file scanner"""
         self.byte_array = self._array_type(file)
         array_size = self.byte_array.get_size()
         self.frames = mp3framelist.MP3FrameList(file_size=array_size)
         if config.OPTS.verbosity >= 3:
-            print("File {}: {} bytes".format(self.filename, 
+            print("File {}: {} bytes".format(self.filename,
                                              self.byte_array.get_size()))
         lockon = False
         prev_byte = 0 #Last identified byte
@@ -72,7 +70,7 @@ class MP3File():
         append_frame = self.frames.conditional_append_frame
         byte_array = self.byte_array
         while True:
-            if not lockon: 
+            if not lockon:
                 if verbosity >= 3:
                     print("Searching for {} consecutive frames at offset {}"\
                           .format(consecutive, prev_byte))
@@ -83,18 +81,18 @@ class MP3File():
                           .format(consecutive, first_pos))
                 if None == next_pos: #EOF reached while searching; save junk
                     if prev_byte < array_size:
-                        self.other.append(bs.BinSlice(prev_byte, 
+                        self.other.append(bs.BinSlice(prev_byte,
                             byte_array.get_slice(prev_byte, array_size),
                                                  self.byte_array))
                     break #We've found all the frames we can
                 elif first_pos > prev_byte: #Tag the parts we skipped
-                    self.other.append(bs.BinSlice(prev_byte, 
-                            byte_array.get_slice(prev_byte, first_pos), 
+                    self.other.append(bs.BinSlice(prev_byte,
+                            byte_array.get_slice(prev_byte, first_pos),
                                                  self.byte_array))
                 lockon = True #If we haven't exited, we should be locked on.
                 prev_byte = next_pos #If we locked on, we identified to here.
             if array_size <= next_pos: #EOF check
-                break 
+                break
             header_s = byte_array.read_header_struct(next_pos)
             length = append_frame(header_s, next_pos)
             if length: #If the header was valid, it's info was added
@@ -104,7 +102,7 @@ class MP3File():
                 if verbosity >=3:
                     print("lockon lost")
                 lockon = False
-                    
+
     def get_lockon(self, byte_array, prev, consecutive_check):
         """The tags that identify MP3 frames can appear by chance.  To
            avoid picking these "false" frames, we try to identify several
@@ -134,11 +132,11 @@ class MP3File():
                 discard_quarantine()
             else:
                 self.frames.accept_quarantine()
-                return next_pos, first_pos 
-        return None, None         
+                return next_pos, first_pos
+        return None, None
 
 class NumpyArrays():
-    """One of the possible implementations of the array representing the mp3 
+    """One of the possible implementations of the array representing the mp3
        file.  This one uses numpy to boost speed on error-riddled files."""
     def __init__(self, file):
         self.byte_array = np.fromfile(file,dtype=np.dtype('B'))
@@ -156,7 +154,7 @@ class NumpyArrays():
             else:
                 self.intarrays.append(byte_array.view("<I4"))
         #self.possibleheaders = np.where(byte_array[:-3] > 254)[0]
-        
+
     def generate_potential_matches(self, skip=-1, match=255, chunk=None):
         """Uses our list of possible headers (an index of bytes = 255),
            to find potential headers.  Skip is the last byte we have
@@ -183,33 +181,33 @@ class NumpyArrays():
             max_peek = min(size, skip+lookahead)
             skip = min(size, skip)
             possibleheaders = np.where(chunk[skip:max_peek] == 255)[0]
-        
+
     def read_header_struct(self, pos):
         """Returns a header struct if given a position in the array."""
         int_index = divmod(pos, 4)
         header = mp3header.HeaderStruct()
         header.d = self.intarrays[int_index[1]][int_index[0]]
         return header
-    
+
     def get_size(self):
         """Returns the size of the file in bytes"""
         return self.byte_array.size
-    
+
     def get_slice(self, start, end):
         "gets a slice of the byte_array"
         return self.byte_array[start:end]
-    
+
 class PythonArrays():
-    """One of the possible implementations of the array representing the mp3 
+    """One of the possible implementations of the array representing the mp3
        file.  This is the fall-back if other options aren't available"""
-       
+
     def __init__(self, file):
         self.byte_array = array.array('B')
         file.seek(0,2)
         size = file.tell()
         file.seek(0,0)
         self.byte_array.fromfile(file, size)
-        
+
     def generate_potential_matches(self, skip=-1, match=255, chunk=None):
         """Gets the next potential header (byte = 255, first 8 of seek tag."""
         skip += 1
@@ -244,18 +242,18 @@ class PythonArrays():
         for offset, byte in enumerate(cut_array):
             if match == byte:
                 yield offset + skip
-        
+
     def read_header_struct(self, pos):
         """Returns a header struct if given a position in the array."""
         h_int = int.from_bytes(self.byte_array[pos:pos+4], byteorder="little")
         header = mp3header.HeaderStruct()
         header.d = h_int
         return header
-        
+
     def get_size(self):
         """Returns the size of the file in bytes"""
         return len(self.byte_array)
-    
+
     def get_slice(self, start, end):
         "gets a slice of the byte_array"
         return self.byte_array[start:end]
